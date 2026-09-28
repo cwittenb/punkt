@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">.</string>
+    <string name="gate_name">. Morgen-Gate</string>
+    <string name="gate_beschreibung">Holt morgens die App „.“ nach vorne, solange Morgenanker, Journal und Tagesskala offen sind. Der Dienst sieht nur, welche App gerade vorne ist, keine Inhalte. Telefon, Uhr, Kontakte, Notruf und Einstellungen bleiben immer frei. Wenn du ihn ausschaltest, fragt die App beim nächsten Öffnen nach einem Satz dazu.</string>
+</resources>

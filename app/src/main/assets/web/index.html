@@ -1,0 +1,1228 @@
+<title>Punkt · Übungs-App</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#ECECEA; --bg:#FBF9F4; --surface:#F3F3F1; --chip:#EAEAE8; --line:#DADAD7;
+  --ink:#262626; --soft:#3A3A3A; --muted:#636362;
+  --accent:#5B2A86; --accent-hover:#45206A; --accent-ink:#FBF9F4;
+  --pink:#B8175A; --pink-ink:#9E1249; --pink-tint:#EAEAE8; --purple-tint:#EAEAE8; --on-pink:#FBF9F4;
+  --good:#2F6B47; --good-tint:#DCE5D3; --warn:#8A5A00; --warn-tint:#EEDFBE; --warn-ink:#6B4600; --crit:#9B2C2C; --crit-tint:#EFD8D0;
+  --hard:0 2px 8px rgba(38,38,38,.14),0 1px 2px rgba(38,38,38,.10); --hard-press:0 1px 3px rgba(38,38,38,.16); --scrim:rgba(38,38,38,.45); --shadow:0 18px 50px rgba(38,38,38,.18);
+  --display:'Fraunces',Georgia,'Times New Roman',serif; --body:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+/* Dunkel: System-Einstellung, manuelle Wahl, und die Übungsbildschirme (.night) */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+  color-scheme:dark;
+  --page:#141414; --bg:#1E1E1E; --surface:#262626; --chip:#2E2E2E; --line:#3A3A3A;
+  --ink:#F3F3F1; --soft:#DADAD8; --muted:#A3A3A1;
+  --accent:#C7AEF0; --accent-hover:#D8C6F5; --accent-ink:#1E1E1E;
+  --pink:#F28DB8; --pink-ink:#F28DB8; --pink-tint:#2E2E2E; --purple-tint:#2E2E2E; --on-pink:#1E1E1E;
+  --good:#7FC79A; --good-tint:#1E2B23; --warn:#E8B84A; --warn-tint:#2E2818; --warn-ink:#F0CE7A; --crit:#E58A7F; --crit-tint:#33201E;
+  --hard:0 2px 10px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35); --hard-press:0 1px 3px rgba(0,0,0,.5); --scrim:rgba(0,0,0,.6); --shadow:0 18px 50px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"],.night{
+  color-scheme:dark;
+  --page:#141414; --bg:#1E1E1E; --surface:#262626; --chip:#2E2E2E; --line:#3A3A3A;
+  --ink:#F3F3F1; --soft:#DADAD8; --muted:#A3A3A1;
+  --accent:#C7AEF0; --accent-hover:#D8C6F5; --accent-ink:#1E1E1E;
+  --pink:#F28DB8; --pink-ink:#F28DB8; --pink-tint:#2E2E2E; --purple-tint:#2E2E2E; --on-pink:#1E1E1E;
+  --good:#7FC79A; --good-tint:#1E2B23; --warn:#E8B84A; --warn-tint:#2E2818; --warn-ink:#F0CE7A; --crit:#E58A7F; --crit-tint:#33201E;
+  --hard:0 2px 10px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35); --hard-press:0 1px 3px rgba(0,0,0,.5); --scrim:rgba(0,0,0,.6); --shadow:0 18px 50px rgba(0,0,0,.55);
+}
+html,body{height:100%}
+body{background:var(--page);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding-inline:16px}
+*{box-sizing:border-box}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.stage{display:flex;gap:28px;justify-content:center;align-items:flex-start;padding-block:24px;min-height:100%}
+.phone{position:relative;width:390px;height:844px;flex-shrink:0;border-radius:36px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--bg)}
+.app{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;background:var(--bg)}
+.panel{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(24px + env(safe-area-inset-top,0px))}
+.panel-toggle{display:none}
+@media (max-width:820px){
+  body{padding-inline:0}
+  .stage{padding-block:0;display:block;height:100%}
+  .phone{width:100%;height:100%;border-radius:0;border:0;box-shadow:none}
+  .panel{display:none;position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:78%;overflow-y:auto;z-index:50;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));background:var(--page);border-top:1px solid var(--line);box-shadow:var(--shadow)}
+  .panel.open{display:flex}
+  .panel-toggle{display:flex;position:fixed;right:14px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--line);background:var(--surface);color:var(--ink);align-items:center;font-weight:700;box-shadow:var(--shadow)}
+}
+
+/* Screens */
+.scr{min-height:100%;display:flex;flex-direction:column;gap:16px;padding:30px 22px 22px;background:var(--bg);color:var(--ink)}
+.scr.tabbed{padding-bottom:0}
+.row{display:flex;gap:10px;align-items:center}
+.between{justify-content:space-between}
+.wrap{flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px}
+.grow{flex-grow:1}
+.small{font-size:14px}.xs{font-size:12.5px}
+.muted{color:var(--muted)}.soft{color:var(--soft)}
+.h1{font-family:var(--display);font-weight:400;font-size:42px;line-height:1.04;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.h1s{font-family:var(--display);font-weight:400;font-size:31px;line-height:1.1;margin:0;text-wrap:balance}
+.h2{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.2;margin:0;text-wrap:balance}
+.eyebrow{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--pink);font-weight:700}
+p{margin:0}
+.lead{font-size:16px;color:var(--muted);line-height:1.5}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.card.hl{border:2px solid var(--pink)}
+.card.flat{background:transparent}
+.btn{min-height:54px;border-radius:27px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:16.5px;padding:0 20px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;width:100%}
+.btn:hover{background:var(--accent-hover)}
+.btn:disabled{background:var(--chip);color:var(--muted);cursor:not-allowed}
+.btn.sec{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.btn.sec:hover{background:var(--purple-tint)}
+.btn.small{min-height:44px;font-size:15px;border-radius:22px}
+.btn.pink{background:var(--pink);color:var(--on-pink)}
+.link{background:none;border:0;color:var(--accent);min-height:44px;padding:0 4px;cursor:pointer;font-size:15px;text-decoration:underline;text-underline-offset:3px}
+.link.quiet{color:var(--muted)}
+.btnrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.btnrow3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.seg{display:grid;gap:6px}
+.segb{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer;padding:0 6px}
+.segb.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.segb.warnon{background:var(--pink);border-color:var(--pink);color:var(--on-pink)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;background:var(--chip);color:var(--soft)}
+.chip.pink{background:var(--pink-tint);color:var(--pink-ink)}
+.chip.purple{background:var(--purple-tint);color:var(--accent)}
+.chip.good{background:var(--good-tint);color:var(--good)}
+.chip.warn{background:var(--warn-tint);color:var(--warn-ink)}
+.chip.crit{background:var(--crit-tint);color:var(--crit)}
+.dot{width:10px;height:10px;border-radius:5px;flex-shrink:0;background:var(--muted)}
+.dot.gruen{background:var(--good)}.dot.gelb{background:var(--warn)}.dot.rot{background:var(--crit)}
+.lab{font-weight:700;font-size:15.5px;line-height:1.4}
+.feld{display:flex;flex-direction:column;gap:8px}
+.labrow{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.ibtn{flex:none;width:36px;height:36px;margin:-7px -8px -7px 0;padding:0;border:0;background:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.ibtn span{width:22px;height:22px;border-radius:11px;border:1.5px solid var(--accent);color:var(--accent);font:italic 700 13px/1 var(--display);display:inline-flex;align-items:center;justify-content:center}
+.ibtn[aria-expanded="true"] span{background:var(--accent);color:var(--accent-ink)}
+.hint{font-size:14.5px;line-height:1.45;color:var(--soft);background:var(--purple-tint);border-radius:12px;padding:10px 12px;margin:0}
+.ta-wrap{position:relative}
+textarea,input[type=text],input[type=time],select{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px;font-size:16px;line-height:1.5}
+textarea{resize:none;min-height:118px;padding-bottom:56px;display:block}
+textarea.short{min-height:90px;padding-bottom:12px}
+textarea::placeholder,input::placeholder{color:var(--muted)}
+.mic{position:absolute;right:10px;bottom:10px;width:44px;height:44px;border-radius:22px;border:1.5px solid var(--pink);background:var(--surface);color:var(--pink);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mic.on{background:var(--pink);color:var(--on-pink)}
+.recpill{position:absolute;right:62px;bottom:20px;padding:2px 10px;border-radius:999px;background:var(--pink-tint);color:var(--pink-ink);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.audio{display:flex;align-items:center;gap:10px;border-radius:22px;background:var(--purple-tint);padding-right:4px}
+.audio .play{width:44px;height:44px;border-radius:22px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon{width:44px;height:44px;border:0;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:22px;flex-shrink:0}
+.info{font-size:13px;color:var(--muted)}
+.info.ok{color:var(--good)}
+.tabs{position:sticky;bottom:0;margin:auto -22px 0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+.tab{min-height:62px;border:0;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.tab.on{color:var(--accent);font-weight:700}
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.sday{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.mark{width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.mark.ok{background:var(--accent);color:var(--accent-ink)}
+.mark.heute{background:var(--pink);color:var(--on-pink)}
+.mark.n{border:2px dashed var(--warn);color:var(--warn-ink)}
+.mark.leer{border:1.5px solid var(--line);color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--chip);overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--accent);border-radius:4px}
+.list{display:flex;flex-direction:column}
+.li{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li button{flex-shrink:0}
+.quote{margin:0;padding-left:12px;border-left:2px solid var(--pink);font-family:var(--display);font-size:17px;line-height:1.45}
+.pre{white-space:pre-wrap;font-family:var(--body);font-size:13.5px;line-height:1.5;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;max-height:260px;overflow-y:auto;margin:0}
+.mx{display:grid;grid-template-columns:92px repeat(7,minmax(0,1fr));gap:4px;align-items:center;font-size:13px}
+.mx .c{height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums}
+.mx .c.warn{background:var(--pink);border-color:var(--pink);color:var(--on-pink)}
+.mx .c.leer{color:var(--muted);font-weight:400}
+.mx .h{text-align:center;color:var(--muted)}
+.ampel{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:16px;border:1px solid}
+.ampel.gruen{background:var(--good-tint);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.ampel.gelb{background:var(--warn-tint);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.ampel.rot{background:var(--crit-tint);border-color:color-mix(in srgb,var(--crit) 40%,transparent)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.step{display:flex;align-items:center;gap:12px;font-size:15px}
+.step .sd{width:12px;height:12px;border-radius:6px;border:2px solid var(--muted);flex-shrink:0}
+.step.done{color:var(--muted)}.step.done .sd{background:var(--accent);border-color:var(--accent)}
+.step.cur{font-weight:700}.step.cur .sd{background:var(--pink);border-color:var(--pink)}
+.timer{font-family:var(--display);font-size:30px;color:var(--pink);font-variant-numeric:tabular-nums}
+.pacer-wrap{height:170px;display:flex;align-items:center;justify-content:center}
+.ring-wrap{position:relative;width:224px;height:224px;margin:4px auto 0}
+.ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--line);stroke-width:5}
+.ring-fg{fill:none;stroke:var(--pink);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .25s linear}
+.ring-fg.warm{stroke:var(--accent)}
+.ring-wrap.klein{width:132px;height:132px}
+.ring-wrap.klein .ring-time{font-size:30px}
+.ring-time.warm{color:var(--accent)}
+.ring-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.ring-time{font-family:var(--display);font-size:40px;color:var(--pink);font-variant-numeric:tabular-nums}
+.ring-sub{font-size:13px;color:var(--muted)}
+.pacer{width:160px;height:160px;border-radius:80px;background:var(--pink);opacity:.85;transition:transform 5s ease-in-out}
+.pacer-word{text-align:center;font-family:var(--display);font-size:22px;color:var(--pink);min-height:30px}
+@media (prefers-reduced-motion: reduce){.pacer{transition:none}}
+.status{font-size:15px;color:var(--soft);display:flex;gap:10px;align-items:center}
+.modalbg{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end;z-index:20}
+.sheet{width:100%;max-height:92%;overflow-y:auto;background:var(--bg);color:var(--ink);border-radius:24px 24px 0 0;padding:22px 22px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.full{position:absolute;inset:0;z-index:20}
+.toast{position:absolute;left:16px;right:16px;bottom:84px;z-index:30;background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 14px;font-size:14.5px;box-shadow:var(--shadow)}
+.panel .card{gap:8px}
+.panel h2{font-family:var(--display);font-weight:400;font-size:20px;margin:0}
+.panel h3{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted)}
+.pbtns{display:flex;flex-wrap:wrap;gap:6px}
+.pb{min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:13.5px}
+.pb:hover{border-color:var(--accent)}
+.pb.warnb{color:var(--crit)}
+.clock{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums}
+.tog{display:flex;align-items:center;gap:10px;min-height:36px;font-size:14px;cursor:pointer}
+.tog input{width:20px;height:20px;accent-color:var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.kv dt{color:var(--muted)}.kv dd{margin:0;font-weight:700}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.daybody{display:flex;flex-direction:column;gap:8px;font-size:14.5px}
+.daybody h4{margin:6px 0 0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dayhead{width:100%;background:none;border:0;padding:0;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tab span{white-space:nowrap}
+.vib{display:inline-flex;gap:5px;align-items:center;flex:none}.vib i{display:block;height:8px;border-radius:4px;background:var(--pink)}
+.tbl thead td{font-size:12.5px;color:var(--muted);padding-top:0}
+
+/* Formen: eckig, harte Schatten, Panels über die ganze Breite */
+.scr .card{margin-inline:-22px;border-radius:0;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 22px}
+.scr .card.hl{border-top:2px solid var(--pink)}
+.ampel{margin-inline:-22px;border-radius:0;border-width:1px 0;padding:18px 22px}
+.btn,.btn.small{border-radius:0;box-shadow:var(--hard)}
+.btn:active:not(:disabled){transform:translateY(1px);box-shadow:var(--hard-press)}
+.btn:disabled{box-shadow:none}
+.btn.sec{background:var(--bg);color:var(--ink);border:1px solid color-mix(in srgb,var(--ink) 55%,transparent)}
+.btn.sec:hover{background:var(--chip)}
+.segb,.chip,.hint,.pre,.mx .c,.sheet,.toast,.pb,.panel .card,.panel-toggle,.recpill,.audio,.audio .play,.icon,.mic,.bar,.bar>span,.ibtn span,textarea,input[type=text],input[type=time],select{border-radius:0}
+.segb.on,.segb.warnon{box-shadow:var(--hard)}
+.segb{font-size:14px;padding:0 4px;hyphens:auto}
+.toast{box-shadow:var(--hard)}
+.sheet{border-top:1px solid var(--line)}
+.nativ .panel,.nativ .panel-toggle{display:none!important}
+.nativ.testmodus .panel-toggle{display:flex!important}
+.nativ.testmodus .panel.open{display:flex!important}
+.scr .card.ampelbox.gelb{background:var(--warn-tint);border-color:var(--warn)}
+.scr .card.ampelbox.rot{background:var(--crit-tint);border-color:var(--crit)}
+.logo{font-family:var(--display);font-size:120px;line-height:.6;color:var(--pink);margin:0}
+.themes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+</style>
+
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="app" id="app"></div>
+    <div id="overlay"></div>
+    <div id="toast" class="toast" hidden></div>
+  </div>
+  <aside class="panel" id="panel" aria-label="Testpanel">
+    <div class="card">
+      <div class="row between"><h2>Testpanel</h2><span class="chip purple" id="p-store">Browser</span></div>
+      <p class="xs muted">Steuert die simulierte Uhrzeit und Sensoren. Gehört nicht zur App.</p>
+    </div>
+    <div class="card">
+      <h3>Simulierte Zeit</h3>
+      <div class="clock" id="p-clock">–</div>
+      <div class="pbtns">
+        <button type="button" class="pb" data-a="tMorgen">Nächster Morgen</button>
+        <button type="button" class="pb" data-a="tStunde">+1 Std.</button>
+        <button type="button" class="pb" data-a="tStamm">Stammfenster</button>
+        <button type="button" class="pb" data-a="tAbend">21:00</button>
+        <button type="button" class="pb" data-a="tSonntag">Sonntag 19:00</button>
+        <button type="button" class="pb" data-a="tTag">+1 Tag</button>
+        <button type="button" class="pb" data-a="tEcht">Echtzeit</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Sensoren und Tempo</h3>
+      <label class="tog"><input type="checkbox" id="p-face" data-a="pFace"> Display liegt unten</label>
+      <label class="tog"><input type="checkbox" id="p-demo" data-a="pDemo"> Demo-Tempo: 1 Minute = 5 Sekunden</label>
+      <div class="pbtns">
+        <button type="button" class="pb" data-a="pNfc">NFC-Aufkleber berühren</button>
+        <button type="button" class="pb" data-a="pImpuls">Tagesimpuls auslösen</button>
+        <button type="button" class="pb" data-a="pSchwelle">Schwelle auslösen</button>
+        <button type="button" class="pb" data-a="pBImpuls">Stiller Impuls</button>
+        <button type="button" class="pb" data-a="pGateAus">Gate abgeschaltet</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Zustand setzen</h3>
+      <label class="small muted" for="p-phase">Schwerpunkt</label>
+      <select id="p-phase" data-ch="pPhase">
+        <option value="probe">Probephase</option><option value="1">Erkennen</option><option value="2">Einheit</option><option value="3">Integration</option>
+      </select>
+      <label class="small muted" for="p-ampel">Ampel ab heute</label>
+      <select id="p-ampel" data-ch="pAmpel">
+        <option value="">– unverändert –</option><option value="gruen">Grün</option><option value="gelb">Gelb</option><option value="rot">Rot</option>
+      </select>
+      <div class="pbtns">
+        <button type="button" class="pb" data-a="pBeispiel">Beispielwoche laden</button>
+        <button type="button" class="pb" data-a="pRunde" id="p-runde">Erster Durchgang läuft</button>
+        <button type="button" class="pb" data-a="pWoche">Wochencheck öffnen</button>
+        <button type="button" class="pb warnb" data-a="pReset">Alles zurücksetzen</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Status</h3>
+      <dl class="kv" id="p-status"></dl>
+    </div>
+  </aside>
+</div>
+<button type="button" class="panel-toggle" id="panelToggle" aria-controls="panel" aria-expanded="false">Test</button>
+
+<script>
+'use strict';
+/* ---------- Android-Hülle: Brücke per Feature-Erkennung ---------- */
+const NATIVE=!!window.PunktNative;
+function nat(fn,...a){try{return window.PunktNative[fn](...a);}catch(e){return null;}}
+function kopiere(t){if(NATIVE)return nat('kopiere',String(t))?Promise.resolve():Promise.reject(new Error('kopieren'));try{return navigator.clipboard.writeText(t);}catch(e){return Promise.reject(e);}}
+if(NATIVE){document.documentElement.classList.add('nativ');const fst=document.createElement('style');fst.textContent="@font-face{font-family:'Fraunces';src:url('fonts/Fraunces.ttf') format('truetype');font-weight:100 900}@font-face{font-family:'Atkinson Hyperlegible';src:url('fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype');font-weight:400}@font-face{font-family:'Atkinson Hyperlegible';src:url('fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype');font-weight:700}";document.head.appendChild(fst);}
+let natTimer=null;
+
+/* ---------- Grundlagen ---------- */
+const WT=['Mo','Di','Mi','Do','Fr','Sa','So'];
+const WT_LANG=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const MON=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const pad=n=>String(n).padStart(2,'0');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10);
+function now(){return new Date(Date.now()+(S.sim.offset||0));}
+function keyOf(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function dateOf(k){const p=k.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function today(){return keyOf(now());}
+function addDays(k,n){const d=dateOf(k);d.setDate(d.getDate()+n);return keyOf(d);}
+function diffDays(a,b){return Math.round((dateOf(b)-dateOf(a))/864e5);}
+function dow(k){return (dateOf(k).getDay()+6)%7;}
+function weekStart(k){return addDays(k,-dow(k));}
+function fmtDay(k){const d=dateOf(k);return WT[dow(k)]+', '+d.getDate()+'. '+MON[d.getMonth()];}
+function fmtShort(k){const d=dateOf(k);return WT[dow(k)]+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';}
+function hm(d){return pad(d.getHours())+':'+pad(d.getMinutes());}
+function mss(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+pad(s%60);}
+function mmss(s){s=Math.max(0,Math.ceil(s));return pad(Math.floor(s/60))+':'+pad(s%60);}
+function range(from,to){const out=[];for(let k=from;k<=to;k=addDays(k,1))out.push(k);return out;}
+
+const ICON={
+  mic:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>',
+  stop:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>',
+  play:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  x:'<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>',
+  check:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  phone:'<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  pen:'<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+  home:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9H4z"/></svg>',
+  book:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg>',
+  pulse:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>',
+  people:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg>',
+  gear:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>'
+};
+
+/* ---------- Zustand ---------- */
+const STORE_KEY='gewahr-state-v1';
+function defaultState(){return{
+  v:1,savedAt:0,created:null,phase:'probe',phaseStart:null,phase1Start:null,
+  settings:{theme:'system',morgen:5,stamm:{tage:[1,3],zeit:'12:30'},begleitung:'stumm',demo:!NATIVE,testmodus:false,impulse:14,namen:'',hauptKurz:false},
+  days:{},checks:{},ampel:[],flags:[],aenderungen:[],pending:null,begegnung:defaultBeg(),runde:1,
+  sim:{offset:0,faceDown:!NATIVE}
+};}
+function defaultBeg(){return{stufe:1,stufeAb:null,schwellen:[{id:'sw1',name:'Vor der ersten Therapiestunde',typ:'zeit',zeit:'08:55'},{id:'sw2',name:'Heimkommen',typ:'nfc',ort:'Aufkleber an der Haustür'},{id:'sw3',name:'Kinder abholen',typ:'ort',ort:'Ankunft am Kindergarten'}],impuls:{n:4,von:8,bis:17},merk:[]};}
+function mergeState(x){const d=defaultState();const o=Object.assign(d,x||{});o.settings=Object.assign(defaultState().settings,(x&&x.settings)||{});o.settings.stamm=Object.assign(defaultState().settings.stamm,((x&&x.settings)||{}).stamm||{});o.sim=Object.assign(defaultState().sim,(x&&x.sim)||{});
+  const xb=(x&&x.begegnung)||{};o.begegnung=Object.assign(defaultBeg(),xb);o.begegnung.impuls=Object.assign(defaultBeg().impuls,xb.impuls||{});
+  Object.keys(o.days||{}).forEach(k=>{const d=o.days[k];if(!d.begeg)d.begeg=[];if(!d.schwellen)d.schwellen=[];if(!d.bimp)d.bimp={n:0,b:0};});return o;}
+let S=defaultState();
+try{const t=localStorage.getItem(STORE_KEY);if(t)S=mergeState(JSON.parse(t));}catch(e){}
+if(NATIVE){try{const t=nat('zustandLaden');if(t){const n=mergeState(JSON.parse(t));if((n.savedAt||0)>(S.savedAt||0))S=n;}}catch(e){}}
+let DBREF=null,STORE=NATIVE?'Handy':'Browser',SAMPLE=null,DOWNLOADS=null,saveTimer=null;
+function save(){
+  S.savedAt=Date.now();
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}
+  if(NATIVE){clearTimeout(natTimer);natTimer=setTimeout(()=>{nat('zustandSichern',JSON.stringify(S));if(typeof nativePlan==='function')nativePlan();},500);}
+  if(DBREF){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{
+    const body=JSON.parse(JSON.stringify(S));
+    DBREF.set(body).catch(e=>{if(e&&e.code==='invalid_argument')toast('Der Kontospeicher ist voll. Exportiere ein Backup und setze die Testdaten zurück.');});
+  },700);}
+}
+async function initCaps(){
+  if(!window.claude||!window.claude.use)return;
+  window.claude.use('sample').then(s=>{SAMPLE=s;if(ui.route==='ki')render();}).catch(()=>{});
+  window.claude.use('downloads').then(d=>{DOWNLOADS=d;}).catch(()=>{});
+  try{
+    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db||!user)return;
+    const id=await user.id();if(!id)return;
+    const ref=db.doc('data/users/'+id+'/gewahr');
+    const snap=await ref.get();
+    if(snap.exists){const remote=mergeState(JSON.parse(JSON.stringify(snap.data())));if((remote.savedAt||0)>=(S.savedAt||0))S=remote;}
+    DBREF=ref;STORE='Konto';save();render();renderPanel();
+  }catch(e){}
+}
+
+function freshDay(){return{phase:S.phase,anker:null,journal:null,skala:null,frei:false,notausgang:null,haupt:[],abend:null,notizen:[],impulse:{n:0,b:0},begr:[],stammSkip:false,begeg:[],schwellen:[],bimp:{n:0,b:0}};}
+function day(k){k=k||today();if(!S.days[k])S.days[k]=freshDay();return S.days[k];}
+function peek(k){return S.days[k]||null;}
+
+/* ---------- Inhalte ---------- */
+const PHASEN={probe:{name:'Probephase',kurz:'Probephase',min:2,next:'1'},'1':{name:'Erkennen',kurz:'Erkennen',min:4,next:'2'},'2':{name:'Einheit',kurz:'Einheit',min:8,next:'3'},'3':{name:'Integration',kurz:'Integration',min:8,next:'1'}};
+const PASSFRAGE={probe:{frage:'Wie halten deine Zeitfenster?',opt:['An drei oder mehr Tagen pro Woche','Mal so, mal so','Noch kaum']},'1':{frage:'Wenn du nach dem Beobachter suchst: Was ist meist da?',opt:['Offenes, gewöhnliches Gewahrsein','Mal so, mal so','Eher Suchen oder Anstrengung']},'2':{frage:'Wenn du nach der Grenze zwischen dir und der Welt suchst, auch im Gespräch: Was findest du meist?',opt:['Keine feste Grenze','Mal so, mal so','Eine deutliche Grenze']},'3':{frage:'Wenn Angst oder Scheitern kommen: Was ist meist da?',opt:['Sie kommen und gehen im Gewahrsein','Mal so, mal so','Sie reißen mich meist mit']}};
+const WECHSEL_TEXT={probe:'Weg vom Einrichten der Zeiten, hin zur Frage nach dem Beobachter.','1':'Weg von der Frage nach dem Beobachter, hin zur Grenze zwischen dir und der Welt.','2':'Die Praxis geht ins Leben: Angst, Scheitern, Schatten.','3':'Zurück zur Frage nach dem Beobachter. Dieselbe Frage, aber du stellst sie jetzt anders.'};
+function minWochen(){return S.runde>1&&S.phase!=='probe'?4:PHASEN[S.phase].min;}
+function vorigerSchwerpunkt(){if(S.phase==='1'&&S.runde>1)return '3';const ord=['probe','1','2','3'];return ord[Math.max(0,ord.indexOf(S.phase)-1)];}
+function wechsleZurueck(ab){const v=vorigerSchwerpunkt();if(S.phase==='1'&&v==='3')S.runde=Math.max(1,S.runde-1);S.phase=v;S.phaseStart=ab;}
+function letzterBesuch(){const st=S.phaseStart;if(!st||diffDays(st,today())>6)return null;const ks=Object.keys(S.days).filter(k=>k<st&&S.days[k].phase===S.phase&&S.days[k].journal&&S.days[k].journal.a).sort();if(!ks.length)return null;const k=ks[ks.length-1];return{tag:k,text:S.days[k].journal.a};}
+const FRAGEN={probe:['Was fand ich, als ich nach dem Beobachter suchte?','War eben etwas da, das keinen Sonderzustand brauchte?'],'1':['Was fand ich, als ich nach dem Beobachter suchte?','War eben etwas da, das keinen Sonderzustand brauchte?'],'2':['Wo suchte ich eine Grenze und fand keine?','Was war gestern in einer Begegnung zu Hause anders?'],'3':['Wann kam gestern Angst, und was geschah mit ihr?','Wo habe ich Scheitern riskiert, und wem ist es geschehen?']};
+const ANKERFRAGE={probe:['Bin ich gewahr?','Nicht antworten. Den Moment vor der Antwort bemerken.'],'1':['Bin ich gewahr?','Nicht antworten. Den Moment vor der Antwort bemerken.'],'2':['Dasselbe schaut aus deinen Augen.','Beim nächsten Menschen, dem du begegnest, einen Atemzug lang prüfen.'],'3':['Wem geschieht das?','Was gerade schwierig ist: Wer erlebt es? Und ist das selbst in Not?']};
+const TX={
+  kohaerenz:{titel:'Kohärenzatmung',text:'Fünf Sekunden ein, fünf aus. Aufmerksamkeit im Brustraum.',pacer:true},
+  koerper:{titel:'Körper-Erkundung',text:'Erst die Hände von innen, dann die Füße, dann der ganze Körper als ein Feld. Hat die Empfindung eine Grenze? Wo endet sie, wo beginnt das Bemerken?'},
+  koerperKurz:{titel:'Körper-Erkundung',text:'Die Hände von innen spüren. Hat die Empfindung eine Grenze? Gibt es einen Abstand zwischen ihr und dem, was sie bemerkt?'},
+  koerperErdend:{titel:'Körper-Erkundung, erdend',text:'Augen offen, Füße auf dem Boden. Spür Gewicht, Kontakt und Atem. Heute keine Frage nach dem Beobachter.',blick:true},
+  erdung:{titel:'Erdungsübung',text:'Fünf Dinge sehen, vier hören, drei berühren. Dann langsam durch den Raum gehen und die Fußsohlen spüren.',blick:true},
+  leere:{titel:'Leere',text:'Augen offen. Nichts tun, nichts suchen. Kommt Langeweile: Wo sitzt sie? Ist der Raum, in dem sie erscheint, selbst gelangweilt? Werden Unruhe oder Druck stärker als mittel: eine Minute Kohärenzatmung, dann aufhören. Auch das zählt.',leere:true},
+  sinne:{titel:'Sinnes-Erkundung',text:'Gern im Gehen. Wo endet das Hören, wo beginnt der Klang? Dann dasselbe mit dem Sehen. Findest du eine Grenze?',blick:true},
+  frei:{titel:'Freie Erkundung',text:'Körper oder Sinne, was heute ruft. Dieselbe Frage wie immer: Wo ist die Grenze zwischen dem Erlebten und dem, der erlebt?'},
+  harding:{titel:'Harding-Experiment',text:'Zeig auf die Wand, dann auf den Boden, dann auf deine Füße. Zum Schluss dorthin, wo andere dein Gesicht sehen. Was findest du dort, in der Erfahrung, nicht im Wissen?',blick:true},
+  metta:{titel:'Metta mit Wendung',text:'Wohlwollen für einen nahen Menschen, dann für einen neutralen, dann für einen schwierigen. Zum Schluss die Frage: Wer wünscht hier wem?'},
+  wuenschen:{titel:'Wünschen ohne zu brauchen',text:'Stell dir ein Ziel lebhaft vor, so wie du es kennst. Dann frag: Wer will das? Wäre ich ohne es weniger ganz?'},
+  bwVor:{titel:'Vorbereitung',text:'Nur sitzend oder liegend an einem sicheren Ort, nie im Wasser oder beim Fahren. Bei Herz-Kreislauf-Erkrankungen, Epilepsie, Schwangerschaft oder in einer psychischen Krise vorher ärztlich abklären. Bei Schwindel oder starkem Kribbeln pausieren und normal atmen.',blick:true},
+  bwAtmen:{titel:'Verbundenes Atmen',text:'Ein und aus ohne Pause, in deinem Tempo, eher tief als schnell. Pausiere, wann immer du willst.'},
+  bwRuhe:{titel:'Ruhe',text:'Normal atmen, liegen bleiben. Nichts festhalten, was auftaucht.'},
+  bwNach:{titel:'Nachspüren',text:'Was ist jetzt da? Und was davon war schon vorher da?'},
+  klang:{titel:'Klangspiel',text:'Alle schließen die Augen. Wer hört den leisesten Ton? Nach einer Minute erzählt jeder, was er gehört hat.',blick:true},
+  ankerGehen:{titel:'Anker-Frage im Gehen',text:'Bei jedem zehnten Schritt: Bin ich gewahr? Nicht antworten, nur bemerken.',blick:true}
+};
+function st(key,min){return Object.assign({key:key,min:min},TX[key]);}
+const ALLE=['probe','1','2','3'];const ORTE=['allein','arbeit','unterwegs','kinder'];
+const ORT_NAME={allein:'Allein',arbeit:'Arbeit',unterwegs:'Unterwegs',kinder:'Mit Kindern'};
+const KATALOG=[
+  {id:'schatten',titel:'Schattenarbeit',min:25,phasen:['3'],orte:['allein'],prio:1,rhythmus:'woche'},
+  {id:'breathwork',titel:'Breathwork',min:45,phasen:['3'],orte:['allein'],prio:1,rhythmus:'monat',nurGruen:true,vor18:true},
+  {id:'haupt',titel:'Hauptpraxis',min:15,phasen:ALLE,orte:['allein','arbeit'],prio:2},
+  {id:'gehen',titel:'Sinnes-Erkundung im Gehen',min:15,phasen:['2','3'],orte:['unterwegs'],prio:2},
+  {id:'harding',titel:'Harding-Experiment',min:10,phasen:['1'],orte:ORTE,prio:3,rhythmus:'woche'},
+  {id:'metta',titel:'Metta mit Wendung',min:10,phasen:['2'],orte:['allein','arbeit'],prio:3,rhythmus:'woche2'},
+  {id:'wuenschen',titel:'Wünschen ohne zu brauchen',min:15,phasen:['3'],orte:['allein'],prio:3,rhythmus:'monat'},
+  {id:'leere',titel:'Leere-Übung',min:5,phasen:ALLE,orte:['allein','arbeit'],prio:4},
+  {id:'klang',titel:'Klangspiel mit den Kindern',min:5,phasen:ALLE,orte:['kinder'],prio:4},
+  {id:'ankergehen',titel:'Anker-Frage im Gehen',min:5,phasen:ALLE,orte:['unterwegs'],prio:4},
+  {id:'erdung',titel:'Erdungsübung',min:10,phasen:ALLE,orte:ORTE,prio:5,nurWarn:true},
+  {id:'kohaerenz',titel:'Kohärenzatmung',min:5,phasen:ALLE,orte:ORTE,prio:6}
+];
+const GRUND={gehen:'Unterwegs sind die Sinne das Übungsfeld.',leere:'Fünf Minuten reichen. Die Leere ist der Teil, der schwer bleibt.',klang:'Wer hört den leisesten Ton? Eine Übung für alle im Raum.',ankergehen:'Bei jedem zehnten Schritt: Bin ich gewahr?',kohaerenz:'Geht überall, auch mitten im Trubel.',erdung:'Die Ampel steht nicht auf Grün. Erdung geht vor.'};
+const UEB_NAME={anker:'Morgenanker',schwelle:'Schwellen-Anker',begegnung:'Begegnungen',haupt:'Hauptpraxis',schatten:'Schattenarbeit',angst:'Angst-Protokoll',scheitern:'Scheitern riskieren'};
+function uebName(id){if(UEB_NAME[id])return UEB_NAME[id];const k=KATALOG.find(x=>x.id===id);return k?k.titel:id;}
+function anlassText(b){return ANLASS[b.anlass]+(b.uebung&&b.anlass!=='haupt_ausgelassen'?' ('+uebName(b.uebung)+')':'');}
+const ANLASS={notausgang:'Notausgang',haupt_ausgelassen:'Hauptpraxis ausgelassen',woche_ausgelassen:'Wochenübung ausgelassen',gate_aus:'Gate abgeschaltet',gelockert:'Einstellung gelockert'};
+const ANLASS_FRAGE={notausgang:'Wer will gerade ausweichen?',haupt_ausgelassen:'Was war heute wichtiger?',woche_ausgelassen:'Was hat dich abgehalten?',gate_aus:'Wofür brauchst du das Handy gerade ohne Gate?',gelockert:'Wofür lockerst du?'};
+const STICHWORTE=['müde','keine Zeit','Kinder','Widerstand','krank','anderes'];
+const ITEMS=[{k:'k',name:'Körperkontakt',frage:'Wie deutlich spürst du deinen Körper?',lo:'kaum',hi:'deutlich'},{k:'w',name:'Wirklichkeitsgefühl',frage:'Wie wirklich wirkt die Welt gerade?',lo:'fremd',hi:'ganz wirklich'},{k:'g',name:'Gefühle',frage:'Sind Gefühle spürbar, auch unangenehme?',lo:'taub',hi:'lebendig'},{k:'s',name:'Schlaf',frage:'Wie hast du geschlafen?',lo:'schlecht',hi:'gut'},{k:'u',name:'Innere Unruhe',frage:'Wie stark ist die innere Unruhe?',lo:'ruhig',hi:'stark'}];
+function haeufText(k,n){const it=ITEMS.find(i=>i.k===k);return it.name+' an '+n+' von 7 Tagen '+(k==='u'?'hoch':'niedrig');}
+function istWarn(k,v){if(v==null)return false;return k==='u'?v>=3:v<=1;}
+const WOCHENITEMS=[{k:'konz',frage:'Wie gut konntest du dich im Alltag konzentrieren?',lo:'kaum',hi:'gut'},{k:'rueck',frage:'Wie sehr hast du dich von Menschen zurückgezogen?',lo:'gar nicht',hi:'stark'},{k:'bypass',frage:'Wie oft hast du unangenehme Gefühle mit spirituellen Gedanken beiseitegeschoben?',lo:'nie',hi:'oft',schwelle:3},{k:'ueber',frage:'Wie oft hast du dich anderen innerlich überlegen gefühlt?',lo:'nie',hi:'oft',schwelle:3},{k:'frust',frage:'Wie groß war der Frust über ausbleibende Zustände?',lo:'keiner',hi:'groß'}];
+const CDS=[{frage:'Wie oft hast du dich diese Woche wie neben dir gefühlt, abgetrennt von dir selbst, und das war unangenehm?'},{frage:'Wie oft wirkte die Welt diese Woche fern, flach oder wie hinter Glas, und das war unangenehm?'}];
+const CDS_SKALA=['nie','selten','manchmal','oft','sehr oft','immer'];
+const SIGNAL={depersonalisation:'Depersonalisation',derealisation:'Derealisation',bypassing:'Bypassing',spirituelles_ego:'Spirituelles Ego',zustands_frust:'Zustands-Frust',flucht:'Flucht',uebererregung:'Übererregung'};
+const AENDERUNGEN=[
+  {id:'kuerzer',art:'Praxis',text:'Hauptpraxis kürzer: 15 statt 20 Minuten'},
+  {id:'fenster',art:'Praxis',text:'Anderes Stammfenster wählen'},
+  {id:'uebung',art:'Praxis',text:'Anderen Schwerpunkt in der Hauptpraxis setzen'},
+  {id:'zurueck',art:'Praxis',text:'Zum vorigen Schwerpunkt wechseln'},
+  {id:'morgen',art:'App',text:'Morgenfenster eine Stunde später'},
+  {id:'impulse',art:'App',text:'Weniger Tagesimpulse'},
+  {id:'erinnerung',art:'App',text:'Erinnerung im Stammfenster 15 Minuten früher'}
+];
+
+/* ---------- Begegnung ---------- */
+const BKAT=[{k:'fremd',name:'Fremde',lang:'Fremde, wenig steht auf dem Spiel',bsp:'Kasse, Bäcker, Bus'},{k:'arbeit',name:'Kollegen',lang:'Kollegen, Routinegespräche',bsp:'Teamsitzung, Flur, Telefon'},{k:'therapie',name:'Therapie',lang:'Therapiestunden',bsp:'Einzel, Gruppe, Aufnahme'},{k:'freunde',name:'Freunde',lang:'Freunde, Nähe',bsp:'Treffen, Telefonat'},{k:'familie',name:'Familie',lang:'Familie, Kinder, Konflikt',bsp:'Abendessen, Streit, Zubettbringen'}];
+const BSTUFE=[
+  {titel:'Dort ein Gesicht, hier keins.',text:'Schau den anderen an und bemerke: Dort ist ein Gesicht, hier, wo du schaust, keins. Er erscheint in deinem offenen Raum.'},
+  {titel:'Die Stimme als Klang.',text:'Hör die Stimme des anderen wie jeden anderen Klang im Raum. Vor jeder Antwort ein Atemzug.'},
+  {titel:'Füße beim Zuhören.',text:'Vor der Stunde der Anker. Während du zuhörst, bleiben 10 % bei den Fußsohlen. Das trägt die gleichschwebende Aufmerksamkeit.'},
+  {titel:'Dasselbe schaut aus deinen Augen.',text:'Wenn du jemanden ansiehst: Dasselbe, das hier schaut, schaut dort aus den Augen. Metta läuft still mit.'},
+  {titel:'Gerade bin ich jemand.',text:'Wenn du dich zusammenziehst, benenn es leise: „Gerade bin ich jemand.“ Dann Füße, Atem, Raum. Nichts wegmachen.'}];
+const BROT={titel:'Nur Füße und Atem.',text:'Solange die Ampel rot ist, keine Frage nach dem Gewahrsein. Spür die Füße, atme aus und schau die Person bewusst an.'};
+const BMAX={probe:1,'1':2,'2':4,'3':5};
+const BGEW=['nie','kurz','zeitweise','meist'];
+const BKON={naeher:'näher',gleich:'wie sonst',ferner:'ferner'};
+const BAUS=['Inhalt','Wie ich wirke','Kritik','Konflikt','Nähe','Zeitdruck','Müdigkeit','anderes'];
+const BGRUND=[['Zurückkehren zählt, nicht Dauer.','Der Moment „ich war weg“ ist schon Gewahrsein.'],['10 % reichen.','Ein kleiner Teil bleibt bei Füßen oder Atem, der Rest gehört dem Gespräch.'],['Der Kontakt wird dichter, nicht dünner.','Wirkt jemand wie hinter Glas, ist das ein Warnzeichen, kein Fortschritt.']];
+function bMax(){return S.runde>1?5:(BMAX[S.phase]||1);}
+function bStufe(){return Math.max(1,Math.min(S.begegnung.stufe||1,bMax()));}
+function fokusFeld(T){T=T||today();const s=bStufe();if(s<=1||S.runde<=1)return s;const ab=S.begegnung.stufeAb;if(ab&&ab>=addDays(weekStart(T),-7))return s;const idx=Math.floor(diffDays('2026-01-05',weekStart(T))/7);return ((idx%s)+s)%s+1;}
+function bFokus(T){return BKAT[fokusFeld(T)-1];}
+function letzteNotiz(kat,vor){const L=bIn(addDays(vor,-180),addDays(vor,-1)).filter(b=>b.kat===kat&&b.text);return L.length?L[L.length-1]:null;}
+function bKat(s){return BKAT[(s||bStufe())-1];}
+function bKatName(k){return (BKAT.find(c=>c.k===k)||{name:k}).name;}
+function bUebung(){return ampelAm().stufe==='rot'?BROT:BSTUFE[fokusFeld()-1];}
+function kreisNamen(s){return BKAT.slice(0,s||bStufe()).map(c=>c.name).join(' · ');}
+function kreisSvg(s){const R=[16,28,40,52,64];let g='';for(let i=4;i>=0;i--){const an=i<s;g+='<circle cx="70" cy="70" r="'+R[i]+'" style="fill:'+(an?'var(--purple-tint)':'none')+';stroke:'+(an?'var(--accent)':'var(--line)')+';stroke-width:1.5'+(an?'':';stroke-dasharray:3 4')+'"/>';}return '<svg viewBox="0 0 140 140" width="120" height="120" role="img" aria-label="Kreis: '+s+' von 5 Feldern">'+g+'</svg>';}
+function stufePhase(s){return ['probe','1','2','3'].find(p=>BMAX[p]>=s);}
+function bIn(from,to){const out=[];for(const k of range(from,to)){const d=peek(k);if(d&&d.begeg)d.begeg.forEach(b=>out.push(Object.assign({tag:k},b)));}return out;}
+function bFern(T){return bIn(addDays(T,-6),T).filter(b=>b.kon==='ferner').length;}
+function bRueck(n){return n>=3?'3+':String(n);}
+function swInfo(s){if(!s)return '';return s.typ==='zeit'?s.zeit+' Uhr · Mo–Fr':s.typ==='nfc'?'NFC · '+(s.ort||'Aufkleber'):'Ort · '+(s.ort||'Ankunft');}
+function schwellePlan(){const rot=ampelAm().stufe==='rot';const u=bUebung();return[{key:'sa',titel:'Ein Atemzug',text:'Einatmen. Lang ausatmen.',pacer:true,sek:10},{key:'sb',titel:rot?'Die Füße':'Wer schaut gerade?',text:rot?'Gewicht, Boden, Kontakt. Mehr braucht es heute nicht.':'Nicht antworten. Dann, im Gespräch: '+u.titel,blick:true,sek:10},{key:'sc',titel:'10 % bleiben hier',text:'Fußsohlen spüren. Dieser kleine Teil bleibt im Körper, der Rest gehört dem Gespräch.',blick:true,sek:10}];}
+function faelligeSchwelle(){const n=now();if(dow(keyOf(n))>4)return null;const jetzt=n.getHours()*60+n.getMinutes();const d=peek(today());return S.begegnung.schwellen.find(s=>{if(s.typ!=='zeit'||!s.zeit)return false;const [h,m]=s.zeit.split(':').map(Number);const t=h*60+m;return jetzt>=t-20&&jetzt<=t+5&&!(d&&d.schwellen.some(x=>x.id===s.id));})||null;}
+
+/* ---------- Phase, Ampel, Pläne ---------- */
+function phaseInfo(){const p=S.phase;const start=S.phaseStart||today();const d=Math.max(0,diffDays(start,today()));return{p:p,def:PHASEN[p],tag:d+1,woche:Math.floor(d/7)+1};}
+function phaseLabel(){return phaseInfo().def.name;}
+function seitTagen(n){return n===1?'1 Tag':n+' Tagen';}
+function leereMin(){if(S.phase==='probe'||!S.phase1Start)return 1;const w=Math.floor(Math.max(0,diffDays(S.phase1Start,today()))/7)+1;return Math.min(10,w);}
+const STUFE={gruen:0,gelb:1,rot:2};
+const STUFE_NAME={gruen:'Grün',gelb:'Gelb',rot:'Rot'};
+function ampelAm(k){k=k||today();let cur={stufe:'gruen',grund:'',ab:null};for(const a of S.ampel)if(a.ab<=k)cur=a;return cur;}
+function setAmpel(stufe,ab,grund){S.ampel.push({stufe:stufe,ab:ab,grund:grund});S.ampel.sort((a,b)=>a.ab<b.ab?-1:a.ab>b.ab?1:0);}
+function erhoeheAmpel(stufe,grund){const m=addDays(today(),1);const cur=ampelAm(m);if(STUFE[stufe]>STUFE[cur.stufe]){setAmpel(stufe,m,grund);return true;}return false;}
+function passungInfo(){const ks=Object.keys(S.checks).sort();if(!ks.length)return null;const c=S.checks[ks[ks.length-1]];return{p:c.passung,datum:c.datum};}
+function letzterCheck(){const ks=Object.keys(S.checks).sort();return ks.length?S.checks[ks[ks.length-1]]:null;}
+function passungStatus(){const c=letzterCheck();const lauf=S.aenderungen.filter(a=>a.wirkung==='offen').slice(-1)[0];const laeuft=lauf?{label:'Änderung läuft: '+lauf.text,cls:'purple'}:null;
+  if(!c||c.passung==='passt')return laeuft||{label:'Passung: passt',cls:'purple'};
+  if(c.besprochen)return laeuft||{label:'Passung: besprochen',cls:'purple'};
+  if(c.antwort==='besprechen')return{label:'Passung: besprechen · Wochencheck '+fmtShort(c.datum),cls:'pink',action:'besprechen',offen:true};
+  if(c.aenderung||laeuft)return laeuft||{label:'Änderung: '+c.aenderung,cls:'purple'};
+  if(c.antwort==='weiter')return{label:'Passung: geprüft, weiter so',cls:'purple'};
+  return{label:'Passung: prüfen · Wochencheck '+fmtShort(c.datum),cls:'pink',action:'besprechen',offen:true};}
+function passungChipS(st){return st.action?'<button type="button" class="chip '+st.cls+'" data-a="'+st.action+'" style="border:0;cursor:pointer">'+esc(st.label)+'</button>':'<span class="chip '+st.cls+'">'+esc(st.label)+'</span>';}
+function passungHeute(){const st=passungStatus();return st.offen?passungChipS(st):'';}
+function passungAktuell(){const ks=Object.keys(S.checks).sort();return ks.length?S.checks[ks[ks.length-1]].passung:'passt';}
+function ankerPlan(){const a=ampelAm().stufe;if(a==='rot')return[st('kohaerenz',2),st('erdung',8)];if(a==='gelb')return[st('kohaerenz',3),st('koerperErdend',7)];return[st('kohaerenz',2),st('koerperKurz',4),st('leere',1)];}
+function hauptPlan(){const a=ampelAm().stufe;const L=leereMin();const kurz=S.settings.hauptKurz;
+  if(a==='rot')return[st('kohaerenz',3),st('erdung',12)];
+  if(a==='gelb')return[st('kohaerenz',3),st('koerperErdend',7)];
+  if(S.phase==='2')return[st('kohaerenz',2),st('sinne',kurz?8:12),st('leere',L)];
+  if(S.phase==='3')return[st('kohaerenz',2),st('frei',kurz?8:12),st('leere',L)];
+  return[st('kohaerenz',3),st('koerper',kurz?7:10),st('leere',S.phase==='probe'?1:L)];}
+function hauptTitel(){return{probe:'Hauptpraxis: Kohärenz, Körper, Leere','1':'Hauptpraxis: Kohärenz, Körper, Leere','2':'Hauptpraxis: Sinnes-Erkundung','3':'Hauptpraxis nach Wahl'}[S.phase];}
+function uebungPlan(id){switch(id){
+  case 'haupt':return hauptPlan();
+  case 'harding':return[st('harding',10)];
+  case 'metta':return[st('kohaerenz',2),st('metta',8)];
+  case 'wuenschen':return[st('kohaerenz',2),st('wuenschen',13)];
+  case 'leere':return[st('leere',5)];
+  case 'erdung':return[st('kohaerenz',2),st('erdung',8)];
+  case 'gehen':return[st('sinne',15)];
+  case 'klang':return[st('klang',5)];
+  case 'ankergehen':return[st('ankerGehen',5)];
+  case 'breathwork':return[st('bwVor',2),st('bwAtmen',30),st('bwRuhe',10),st('bwNach',3)];
+  default:return[st('kohaerenz',5)];}}
+function sessionsIn(from,to,typ){let n=0;for(const k of range(from,to)){const d=peek(k);if(d)n+=d.haupt.filter(h=>h.typ===typ).length;}return n;}
+function empfehlungen(t,ort){
+  const a=ampelAm().stufe,T=today(),ws=weekStart(T),ms=T.slice(0,8)+'01',h=now().getHours();
+  const hauptHeute=sessionsIn(T,T,'haupt'),hauptWoche=sessionsIn(ws,T,'haupt');const out=[];
+  for(const k of KATALOG){
+    if(!k.phasen.includes(S.phase)||!k.orte.includes(ort)||k.min>t)continue;
+    if(a!=='gruen'){if(!['kohaerenz','erdung','klang'].includes(k.id))continue;}else if(k.nurWarn)continue;
+    if(k.vor18&&h>=18)continue;
+    let grund='';
+    if(k.rhythmus==='woche'){if(sessionsIn(ws,T,k.id)>=1)continue;grund='Diese Woche noch offen.';}
+    if(k.rhythmus==='woche2'){const n=sessionsIn(ws,T,k.id);if(n>=2)continue;grund='Diese Woche '+n+' von 2 Mal.';}
+    if(k.rhythmus==='monat'){if(sessionsIn(ms,T,k.id)>=1)continue;grund='Diesen Monat noch offen.';}
+    if(k.id==='haupt'){if(hauptHeute>0)continue;grund='Heute noch keine Hauptpraxis. Diese Woche '+hauptWoche+' von 3–5.';}
+    if(k.id==='schatten')grund='Diese Woche noch offen. Sie braucht 25 Minuten allein, und die hast du gerade.';
+    if(k.id==='breathwork')grund='Einmal im Monat möglich: Ampel grün, vor 18 Uhr, diesen Monat noch offen.';
+    if(!grund)grund=GRUND[k.id]||'';
+    out.push(Object.assign({},k,{grund:grund,titel:k.id==='haupt'?hauptTitel():k.titel,dauer:k.id==='haupt'?'15–25 Min.':k.id==='klang'?'5–10 Min.':k.min+' Min.'}));
+  }
+  out.sort((x,y)=>x.prio-y.prio);
+  if(!out.length)out.push(Object.assign({},KATALOG[KATALOG.length-1],{grund:GRUND.kohaerenz,dauer:'5 Min.'}));
+  return out;
+}
+
+/* ---------- UI-Zustand ---------- */
+const ui={route:'auto',f:{},info:{},modal:null,wc:null,ki:null,nach:null,zeit:{t:30,ort:'allein'},offen:{},schatten:null,angst:null,panelOpen:false,lastPacer:false};
+let SES=null,REC=null;
+const GATE_OK=['gate','session','journal','skala','notausgang','frei','start','bnotiz'];
+function gateAktiv(){if(!S.created)return false;const n=now();if(n.getHours()<S.settings.morgen)return false;const d=peek(today());return !(d&&d.frei);}
+function autoRoute(){if(!S.created)return 'start';if(gateAktiv()){const d=peek(today());if(!d||!d.anker)return 'gate';if(!d.journal)return 'journal';if(!d.skala)return 'skala';}return 'heute';}
+function go(r,keep){if(REC){if(NATIVE)nat('aufnahmeStopp');REC=null;}if(r==='auto')r=autoRoute();if(gateAktiv()&&!GATE_OK.includes(r))r=autoRoute();ui.route=r;if(!keep)ui.f={};render();const a=document.getElementById('app');if(a)a.scrollTop=0;}
+function fragen(){return FRAGEN[S.phase];}
+function minAudio(){return S.settings.demo?5:15;}
+function secPerMin(){return S.settings.demo?5:60;}
+
+/* ---------- Audio ---------- */
+let ACTX=null;
+function ensureAudio(){try{const C=window.AudioContext||window.webkitAudioContext;if(!ACTX&&C)ACTX=new C();if(ACTX&&ACTX.state==='suspended')ACTX.resume();}catch(e){}}
+function ton(f1,f2,dauer,vol){if(!ACTX)return;try{const t=ACTX.currentTime,o=ACTX.createOscillator(),g=ACTX.createGain();o.type='sine';o.frequency.setValueAtTime(f1,t);o.frequency.linearRampToValueAtTime(f2,t+.6);g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+.06);g.gain.exponentialRampToValueAtTime(.0001,t+dauer);o.connect(g);g.connect(ACTX.destination);o.start(t);o.stop(t+dauer+.1);}catch(e){}}
+function gong(){ton(392,392,2.6,.18);setTimeout(()=>ton(588,588,2.2,.07),40);}
+function sprich(w){if(NATIVE&&nat('sprich',w))return;try{const u=new SpeechSynthesisUtterance(w);u.lang='de-DE';u.rate=.8;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
+function atemSignal(w){const m=S.settings.begleitung;if(m==='ton')ton(w==='ein'?396:528,w==='ein'?528:396,1.4,.15);else if(m==='stimme')sprich(w);}
+const ATEM={epoch:0,idx:-1};
+function pacerTick(){const el=document.getElementById('pacer');if(!el){ui.lastPacer=false;return;}
+  if(!ui.lastPacer){ui.lastPacer=true;ATEM.epoch=Date.now();ATEM.idx=-1;}
+  const idx=Math.floor((Date.now()-ATEM.epoch)/5000);if(idx===ATEM.idx)return;ATEM.idx=idx;const w=idx%2===0?'ein':'aus';
+  el.style.transform=w==='ein'?'scale(1)':'scale(.55)';const wd=document.getElementById('pacer-word');if(wd)wd.textContent=w;atemSignal(w);}
+function schlaf(){if(NATIVE)nat('wach',false);if(WAKE){try{WAKE.release();}catch(e){}WAKE=null;}}
+let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLock&&!WAKE)navigator.wakeLock.request('screen').then(l=>{WAKE=l;l.addEventListener('release',()=>{WAKE=null;});}).catch(()=>{});}catch(e){}}
+
+/* ---------- Sessions ---------- */
+function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
+function startSession(typ,ctx,extra){ensureAudio();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');}
+function stepDur(s){return s.sek!=null?s.sek:s.min*secPerMin();}
+function stepLaeuft(s){return !!(s.pacer||s.blick||S.sim.faceDown);}
+function sesMinuten(){let m=0;SES.plan.forEach((x,i)=>{if(i<SES.i)m+=x.min;else if(i===SES.i)m+=Math.min(x.min,SES.elapsed/secPerMin());});return Math.round(m*10)/10;}
+function sesWeiter(){const s=SES;if(!s)return;if(s.i<s.plan.length-1){s.i++;s.elapsed=0;s.warm=s.typ==='schwelle'?0:warmDauer(s.plan[s.i],false);s.warmEl=0;s.last=Date.now();render();}else sesFertig();}
+function sesFertig(){const s=SES;const at=hm(now());schlaf();
+  if(s.typ==='schwelle'){SES=null;day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
+  const min=sesMinuten();SES=null;
+  if(s.typ==='anker'){day().anker={min:min,variante:ampelAm().stufe,at:at};save();go('journal');return;}
+  ui.nach={typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?ui.zeit.ort:(s.ctx==='stamm'?'arbeit':null),empfohlen:s.ctx==='zeit'&&ui.zeit.top===s.typ};save();go('nach');}
+function tick(){
+  const t=Date.now();
+  if(SES){const dt=(t-SES.last)/1000;SES.last=t;
+    if(ui.route==='session'&&SES.warm>0){SES.warmEl+=dt;const rest=SES.warm-SES.warmEl;if(rest<=0){SES.warm=0;SES.warmEl=0;ton(440,528,1.2,.12);render();return;}const wz=document.getElementById('s-zeit');if(wz)wz.textContent=String(Math.ceil(rest));const wr=document.getElementById('s-ring');if(wr)wr.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.warmEl/SES.warm)).toFixed(2));return;}
+    if(ui.route==='session'){const s=SES.plan[SES.i];const dur=stepDur(s);
+      if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}gong();render();return;}}
+      const z=document.getElementById('s-zeit');if(z)z.textContent=mmss(dur-SES.elapsed);const rg=document.getElementById('s-ring');if(rg)rg.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.elapsed/dur)).toFixed(2));
+      const stt=document.getElementById('s-status');if(stt)stt.innerHTML=sesStatus(s,SES.elapsed>=dur);}}
+  if(REC){const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent='● '+mss((t-REC.start)/1000);live();}
+  pacerTick();
+}
+function sesStatus(s,fertig){if(fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';if(s.pacer)return 'Folge dem Kreis oder der Begleitung.';if(s.blick)return 'Augen offen, das Display darf oben liegen.';return S.sim.faceDown?'<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten':'<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';}
+</script>
+<script>
+'use strict';
+/* ---------- Bausteine ---------- */
+const INFO={
+  'Was fand ich, als ich nach dem Beobachter suchte?':'Beschreib, was du tatsächlich gefunden hast, nicht was du darüber weißt. Oft ist es kein Ding, nur Raum, Empfindung oder Klang. Auch „nichts Greifbares“ ist ein Fund. Beispiel: „Ich suchte hinter den Augen und fand nur Helligkeit und leichten Druck, keinen, der schaut.“',
+  'War eben etwas da, das keinen Sonderzustand brauchte?':'Sonderzustand heißt: Weite, Stille, Glück, Energie, alles, was kommt und geht. Gemeint ist das schlichte Bemerken, das auch da ist, wenn du müde oder unruhig bist. „Eben“ meint den Anker oder den Moment davor. Beispiel: „Beim Zähneputzen. Nichts Besonderes, und genau das.“ Auch „Nein, ich habe nach Weite gesucht“ ist eine ehrliche Antwort.',
+  'Wo suchte ich eine Grenze und fand keine?':'Such in der Erfahrung, nicht im Denken: Wo hört das Hören auf und fängt der Klang an? Wo endet die Hand? Beschreib die Stelle, an der du gesucht hast, und was dort war. Beispiel: „Beim Vogelgesang fand ich keinen Ort, an dem das Hören aufhört.“',
+  'Was war gestern in einer Begegnung zu Hause anders?':'Ein Moment mit der Familie, der sich anders anfühlte als sonst: mehr Raum, weniger Abwehr, oder auch das Gegenteil. Beschreib die Situation in einem Satz, ohne sie zu bewerten.',
+  'Wann kam gestern Angst, und was geschah mit ihr?':'Ein konkreter Moment: die Situation und wo im Körper. Dann: Blieb sie, verging sie, hat sie dein Handeln bestimmt? Beispiel: „Vor der Teamsitzung, Enge in der Brust. Beim Hinspüren wurde sie weicher, ging aber nicht weg.“',
+  'Wo habe ich Scheitern riskiert, und wem ist es geschehen?':'Etwas Ungeübtes vor anderen, oder ein Fehler, den du zugegeben hast, ohne ihn zu erklären. Der zweite Teil fragt: Findest du jemanden, dem es geschehen ist, oder nur Gefühle und Gedanken? Kein Risiko gestern ist auch eine Antwort.',
+  'Was hast du riskiert, und wem ist es geschehen?':'Etwas Ungeübtes vor anderen, oder ein Fehler, den du zugegeben hast, ohne ihn zu erklären. Dann: Findest du jemanden, dem es geschehen ist, oder nur Gefühle und Gedanken?',
+  'Wie deutlich spürst du deinen Körper?':'0 heißt kaum oder wie taub, 4 heißt deutlich, von innen. Gemeint ist dieser Moment, nicht der ganze Tag.',
+  'Wie wirklich wirkt die Welt gerade?':'0 heißt fremd, wie hinter Glas oder im Film, 4 ganz gewöhnlich wirklich. Weite oder Stille machen die Welt nicht unwirklicher; Unwirklichkeit mit Unbehagen ist das Warnsignal.',
+  'Sind Gefühle spürbar, auch unangenehme?':'0 heißt taub oder flach, 4 lebendig, auch Ärger oder Traurigkeit. Ruhe ist kein niedriger Wert, Taubheit schon.',
+  'Wie hast du geschlafen?':'Die letzte Nacht, so wie du sie einschätzt. Schlechter Schlaf ist oft ein früher Hinweis auf Übererregung.',
+  'Wie stark ist die innere Unruhe?':'Gemessen wird die Stärke, nicht das Bemerken. Den Druck deutlich zu bemerken ist gut. 3 oder 4 heißt deutliche Unruhe, Getriebenheit oder Druck; das wird rosa markiert und zählt für die Ampel erst, wenn es an 3 von 7 Tagen vorkommt. Leichte Nervosität vor einem vollen Tag ist 1 oder 2.',
+  'Wie gut konntest du dich im Alltag konzentrieren?':'Die ganze Woche im Blick: Konntest du bei der Arbeit und zu Hause bei einer Sache bleiben? 0 kaum, 4 gut.',
+  'Wie sehr hast du dich von Menschen zurückgezogen?':'Gemeint ist Rückzug, der sich nach Abstand oder Gleichgültigkeit anfühlt, nicht gewählte Zeit für dich.',
+  'Wie oft hast du unangenehme Gefühle mit spirituellen Gedanken beiseitegeschoben?':'Zum Beispiel Ärger sofort mit „ist ja nur ein Gedanke“ weglegen, statt ihn zu spüren. Ab 3 geht die Ampel auf Gelb.',
+  'Wie oft hast du dich anderen innerlich überlegen gefühlt?':'Das Gefühl, weiter zu sein als andere oder über ihren Sorgen zu stehen. Ab 3 geht die Ampel auf Gelb. Ehrlich hilft hier mehr als gut aussehen.',
+  'Wie groß war der Frust über ausbleibende Zustände?':'Enttäuschung, weil Weite oder Stille nicht wiederkommen. Das ist häufig und kein Fehler, aber ein Zeichen, dass die Aufmerksamkeit nach Zuständen greift.',
+  'Wie halten deine Zeitfenster?':'Es zählt, ob die Fenster tatsächlich stattfanden, nicht wie gut die Praxis darin war.',
+  'Wenn du nach dem Beobachter suchst: Was ist meist da?':'„Offenes, gewöhnliches Gewahrsein“ heißt: Beim Hinschauen ist meist sofort etwas Schlichtes da, ohne dass es sich besonders anfühlen muss. Suchen oder Anstrengung ist genauso normal.',
+  'Wenn du nach der Grenze zwischen dir und der Welt suchst, auch im Gespräch: Was findest du meist?':'Gemeint ist die Erfahrung beim Hinschauen, nicht die Überzeugung. „Eine deutliche Grenze“ ist kein Mangel, nur ein Hinweis, dass Einheit noch Zeit braucht.',
+  'Wenn Angst oder Scheitern kommen: Was ist meist da?':'„Mitreißen“ heißt: Angst oder Scheitern bestimmen, was du denkst und tust, ohne dass Raum darum herum bleibt. Keine Antwort ist besser als eine andere.',
+  'Mit wem?':'Die Art der Begegnung. Vorausgewählt ist das Feld, das gerade im Mittelpunkt steht.',
+  'Wie gewahr warst du?':'Grob über die ganze Begegnung geschätzt: „kurz“ ein Moment, „zeitweise“ mehrmals, „meist“ fast durchgehend. Dafür gibt es kein Ziel.',
+  'Wie oft bist du zurückgekehrt?':'Jedes Mal, wenn du bemerkt hast: Ich war weg, im Inhalt oder in meiner Wirkung. Das ist die eigentliche Übung. Auch jetzt, beim Notieren, kehrst du zurück.',
+  'Der Kontakt war …':'Verglichen mit ähnlichen Begegnungen ohne Übung. „Ferner“ heißt: wie hinter Glas, abgeschnitten, unbeteiligt. Das ist ein Hinweis, kein Fortschritt.',
+  'Was hat dich herausgezogen?':'Was dich aus dem Gewahrsein geholt hat. „Inhalt“: das Thema selbst. „Wie ich wirke“: die Sorge um deinen Eindruck.',
+  'Zwei Sätze: Was hast du gefunden?':'Was du tatsächlich bemerkt hast, nicht was hätte sein sollen. Auch Langeweile oder Unruhe sind ein Fund.',
+  'Was fandst du dort, wo andere dein Gesicht sehen?':'Die Erfahrung beim Zeigen, nicht das Wissen: Farbe, Raum, das Zimmer? Oder doch ein Gesicht?',
+  'Wer wünschte hier wem?':'Schau beim Wünschen hin: Findest du einen, der wünscht, getrennt von dem, dem er wünscht?',
+  'Was blieb, als der Zustand ging?':'Breathwork erzeugt starke Zustände. Die Frage richtet den Blick auf das, was schon vorher da war und danach noch da ist.',
+  'Wer wollte das? Und was blieb ohne es?':'Stell dir kurz vor, es kommt nie. Was bleibt dann noch da?',
+  'Wer will gerade ausweichen?':'Kein Rechtfertigen, nur Hinschauen: Was in dir will gerade nicht üben? Müdigkeit, Widerstand, ein voller Tag? Ein Satz reicht.',
+  'Ein Satz, mindestens 20 Zeichen':'Ein ehrlicher Satz reicht. Einzelne Sätze bleiben im Wochencheck unkommentiert; erst eine Häufung wird angesprochen.',
+  'Mit wem, und was kam heraus?':'Ein Satz reicht, zum Beispiel: „Mit der Supervisorin: Dienstags liegt die Teamsitzung, das Fenster passt dort nicht.“ Auch „Waren nur Testdaten“ ist eine Antwort.',
+  'Wie oft hast du dich diese Woche wie neben dir gefühlt, abgetrennt von dir selbst, und das war unangenehm?':'Gemeint ist ein Abstand zu dir selbst, der sich taub, mechanisch oder beunruhigend anfühlt, als wärst du nicht richtig da. Das gelassene Zuschauen aus der Übung zählt nicht. Summe beider Fragen ab 3: Gelb, ab 5: Rot.',
+  'Wie oft wirkte die Welt diese Woche fern, flach oder wie hinter Glas, und das war unangenehm?':'Gemeint ist eine Welt, die unwirklich oder wie ein Film wirkt und dich damit allein lässt. Klarheit oder Weite beim Hinschauen zählen nicht. Summe beider Fragen ab 3: Gelb, ab 5: Rot.',
+  'Was ist gerade da?':'Was auch immer gerade erscheint: ein Gefühl, ein Gedanke, ein Bemerken. Ohne Anspruch.'
+};
+function ibtn(key){return '<button type="button" class="ibtn" data-a="info" data-v="'+key+'" aria-expanded="'+!!ui.info[key]+'" aria-controls="i-'+key+'" aria-label="Erklärung zur Frage"><span aria-hidden="true">i</span></button>';}
+function hintP(key,text){return text&&ui.info[key]?'<p class="hint" id="i-'+key+'">'+esc(text)+'</p>':'';}
+function qlab(key,text,id,extra){const info=INFO[text];return '<div class="labrow"><p class="lab"'+(id?' id="'+id+'"':'')+'>'+esc(text)+(extra||'')+'</p>'+(info?ibtn(key):'')+'</div>'+hintP(key,info);}
+function recEnde(){if(!REC)return;let sek=Math.round((Date.now()-REC.start)/1000);if(NATIVE){const n=nat('aufnahmeStopp');if(typeof n==='number'&&n>0)sek=n;}ui.f['aud_'+REC.key]=(ui.f['aud_'+REC.key]||0)+sek;REC=null;}
+function stopRec(){recEnde();}
+function audSek(key){return (ui.f['aud_'+key]||0)+(REC&&REC.key===key?(Date.now()-REC.start)/1000:0);}
+
+function tabs(akt){const t=[['heute','Heute',ICON.home],['begegnung','Begegnung',ICON.people],['tagebuch','Journal',ICON.book],['check','Check',ICON.pulse],['einst','Optionen',ICON.gear]];
+  return '<nav class="tabs" aria-label="Hauptnavigation">'+t.map(x=>'<button type="button" class="tab '+(akt===x[0]?'on':'')+'" data-a="go" data-v="'+x[0]+'" '+(akt===x[0]?'aria-current="page"':'')+'>'+x[2]+'<span>'+x[1]+'</span></button>').join('')+'</nav>';}
+function feld(key,label,min,opt){opt=opt||{};const v=ui.f[key]||'';const aud=ui.f['aud_'+key]||0;const rec=REC&&REC.key===key;const mic=opt.mic!==false;
+  const infoText=opt.info||INFO[label];const info=infoText?ibtn(key):'';
+  return '<div class="feld"><div class="labrow"><label for="f-'+key+'" class="lab">'+esc(label)+'</label>'+info+'</div>'+hintP(key,infoText)+'<div class="ta-wrap"><textarea id="f-'+key+'" class="'+(mic?'':'short')+'" data-f="'+key+'" data-min="'+(min||0)+'" data-mic="'+(mic?1:0)+'" placeholder="'+esc(opt.ph||(mic?'Schreib, oder tippe aufs Mikrofon …':'Ein ehrlicher Satz …'))+'">'+esc(v)+'</textarea>'+
+  (mic?(rec?'<span class="recpill" data-rec-pill="'+key+'">● 0:00</span>':'')+'<button type="button" class="mic '+(rec?'on':'')+'" data-a="mic" data-v="'+key+'" aria-label="'+(rec?'Aufnahme stoppen':'Antwort sprechen')+'">'+(rec?ICON.stop:ICON.mic)+'</button>':'')+'</div>'+
+  (aud>0?'<div class="audio"><span class="play">'+ICON.play+'</span><div class="col grow" style="gap:0"><strong class="small">Sprachnotiz '+mss(aud)+'</strong><span class="xs muted">'+(NATIVE?'auf dem Handy gespeichert':'simuliert, der Browser gibt kein Mikrofon frei')+'</span></div><button type="button" class="icon" data-a="audioWeg" data-v="'+key+'" aria-label="Sprachnotiz löschen">'+ICON.x+'</button></div>':'')+
+  '<span class="info" data-info="'+key+'"></span></div>';}
+function fieldOk(key){const el=document.querySelector('[data-f="'+key+'"]');const min=el?Number(el.dataset.min||0):0;const t=(ui.f[key]||'').trim().length;const aud=audSek(key);const mic=el?el.dataset.mic==='1':false;return t>=min||(mic&&min>0&&aud>=minAudio());}
+function live(){
+  document.querySelectorAll('[data-info]').forEach(el=>{const k=el.dataset.info;const inp=document.querySelector('[data-f="'+k+'"]');const min=Number(inp?inp.dataset.min:0);const mic=inp&&inp.dataset.mic==='1';if(!min){el.textContent='';return;}
+    const t=(ui.f[k]||'').trim().length,aud=audSek(k);
+    if(mic&&aud>=minAudio()){el.textContent='Sprachnotiz zählt · genug';el.className='info ok';}
+    else if(t>=min){el.textContent=t+' Zeichen · genug';el.className='info ok';}
+    else{el.textContent=t+' von '+min+' Zeichen'+(mic?', oder '+minAudio()+' Sek. sprechen':'');el.className='info';}});
+  document.querySelectorAll('[data-why]').forEach(el=>{const keys=el.dataset.why.split(',');const miss=[];keys.forEach((k,i)=>{if(fieldOk(k))return;const inp=document.querySelector('[data-f="'+k+'"]');const min=Number(inp?inp.dataset.min:0);const t=(ui.f[k]||'').trim().length;miss.push('Frage '+(i+1)+' braucht noch '+Math.max(1,min-t)+' Zeichen');});el.textContent=miss.length?'Noch offen: '+miss.join(', ')+' (oder je '+minAudio()+' Sek. sprechen).':'';});
+  document.querySelectorAll('[data-ready]').forEach(b=>{const keys=b.dataset.ready.split(',').filter(Boolean);const extra=b.dataset.extra?!!ui.f[b.dataset.extra]:true;b.disabled=!(keys.every(fieldOk)&&extra);});
+}
+function seg(key,werte,labels,cols,warnFn){const cur=ui.f[key];return '<div class="seg" role="group" style="grid-template-columns:repeat('+cols+',minmax(0,1fr))">'+werte.map((w,i)=>{const on=cur===w;const warn=on&&warnFn&&warnFn(w);return '<button type="button" class="segb '+(warn?'warnon':on?'on':'')+'" aria-pressed="'+on+'" data-a="set" data-k="'+key+'" data-v="'+esc(JSON.stringify(w))+'">'+esc(labels?labels[i]:w)+'</button>';}).join('')+'</div>';}
+function stichChips(key,liste,cols){liste=liste||STICHWORTE;return '<div class="seg" role="group" aria-label="Stichwort" style="grid-template-columns:repeat('+(cols||3)+',minmax(0,1fr))">'+liste.map(w=>{const on=ui.f[key]===w;return '<button type="button" class="segb '+(on?'on':'')+'" aria-pressed="'+on+'" data-a="stich" data-k="'+key+'" data-v="'+esc(w)+'">'+esc(w)+'</button>';}).join('')+'</div>';}
+function ampelChip(s){return '<span class="chip '+(s==='gruen'?'good':s==='gelb'?'warn':'crit')+'"><span class="dot '+s+'"></span>Ampel '+STUFE_NAME[s].toLowerCase()+'</span>';}
+function passungChip(p){const m={passt:['purple','Passung: passt'],pruefen:['pink','Passung: prüfen'],aendern:['pink','Passung: ändern']}[p]||['purple','Passung: passt'];return '<span class="chip '+m[0]+'">'+m[1]+'</span>';}
+function ringHtml(inner,anteil,warm){return '<div class="ring-wrap'+(warm?' klein':'')+'"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="94" class="ring-bg"/><circle cx="100" cy="100" r="94" class="ring-fg'+(warm?' warm':'')+'" id="s-ring" pathLength="100" stroke-dasharray="100" stroke-dashoffset="'+(100-100*Math.min(1,anteil||0)).toFixed(2)+'"/></svg><div class="ring-in">'+inner+'</div></div>';}
+function pacerHtml(anteil){const b=S.settings.begleitung;const kreis='<div class="pacer" id="pacer" aria-hidden="true" style="transform:scale(.55)"></div>';return (anteil!=null?ringHtml(kreis,anteil):'<div class="pacer-wrap">'+kreis+'</div>')+'<p class="pacer-word" id="pacer-word" aria-hidden="true"></p><div class="seg" role="group" aria-label="Atembegleitung" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(b===x[0]?'on':'')+'" aria-pressed="'+(b===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';}
+
+/* ---------- Ansichten ---------- */
+const V={};
+V.start=()=>'<div class="scr"><p class="logo" role="img" aria-label="Punkt">.</p>'+(NATIVE?'':'<span class="eyebrow">Testversion</span>')+'<h1 class="h1">Willkommen.</h1><p class="lead">'+(NATIVE?'Morgen-Gate, Praxis, Journal, Tagesskala, Wochencheck. Die App meldet sich zu deinen Zeiten. Sonst ist sie still.':'Diese Version führt dich durch den ganzen Weg: Morgen-Gate, Praxis, Journal, Tagesskala, Wochencheck und KI-Auswertung. Uhrzeit, Sensoren und Schwerpunkte steuerst du im Testpanel.')+'</p>'+
+  '<div class="card"><strong>Die Probephase dauert zwei Wochen.</strong><p class="soft">Jeden Tag der Morgenanker ab '+S.settings.morgen+' Uhr. Dazu mindestens fünfmal 15 Minuten Hauptpraxis in wechselnden Zeitfenstern. So findest du dein Stammfenster.</p></div>'+
+  '<div class="card"><strong>Was gespeichert wird</strong><p class="soft small">'+(NATIVE?'Alles bleibt auf diesem Handy: Journal, Aufnahmen, Einstellungen. Exportieren kannst du in den Optionen.':'Deine Testdaten bleiben in diesem Artefakt und sind nur für dich sichtbar. Sprachaufnahmen werden nur simuliert, weil der Browser hier kein Mikrofon freigibt.')+'</p></div>'+
+  '<div class="grow"></div><button type="button" class="btn" data-a="beginnen">Probephase heute beginnen</button><button type="button" class="btn sec" data-a="pBeispiel">Mit Beispieldaten starten</button></div>';
+
+V.gate=()=>{const a=ampelAm();const plan=ankerPlan();const total=plan.reduce((s,x)=>s+x.min,0);const haupt=plan[1]||plan[0];const d=peek(today());
+  let ampelBox='';
+  if(a.stufe==='gruen')ampelBox='<div class="row small"><span class="dot gruen"></span><span><strong>Ampel grün</strong> · Plan läuft wie vorgesehen</span></div>';
+  else ampelBox='<div class="card ampelbox '+a.stufe+'"><div class="row"><span class="dot '+a.stufe+'"></span><strong>Ampel '+STUFE_NAME[a.stufe].toLowerCase()+'</strong></div><p class="soft small">'+esc(a.grund)+(a.stufe==='rot'?'. Selbstergründung pausiert. Sprich diese Woche mit deinem Lehrer oder einer Kollegin.':'. Heute die erdende Variante.')+'</p></div>';
+  return '<div class="scr night"><div class="row between small muted"><span>'+fmtDay(today())+'</span><span>'+esc(phaseLabel())+'</span></div>'+
+  '<div class="col"><h1 class="h1">Erst die Praxis.</h1><p class="lead">Das Handy wird frei, sobald Praxis, Journal und Tagesskala erledigt sind.</p></div>'+ampelBox+
+  '<section class="card grow" aria-label="Übung heute"><span class="eyebrow">Heute</span><h2 class="h2">'+(a.stufe==='rot'?'Erdungsübung':a.stufe==='gelb'?'Morgenanker, erdend':'Morgenanker')+'</h2><div class="row wrap"><span class="chip">'+total+' Min.</span><span class="chip">'+plan.map(x=>x.titel).join(' · ')+'</span></div><p class="soft">'+esc(haupt.text)+'</p>'+
+  (d&&d.anker?'<p class="small" style="color:var(--pink)">Anker erledigt. Noch offen: '+(!d.journal?'Journal':'Tagesskala')+'.</p>':'')+'</section>'+
+  (d&&d.anker?'<button type="button" class="btn" data-a="go" data-v="'+(!d.journal?'journal':'skala')+'">Weiter zum '+(!d.journal?'Journal':'Tagesskala')+'</button>':'<button type="button" class="btn" data-a="ankerStart">Praxis beginnen</button><p class="small muted" style="text-align:center">Oder den NFC-Aufkleber am Kissen berühren.</p>')+
+  '<div class="row between"><button type="button" class="link quiet" data-a="telefon" style="text-decoration:none;display:flex;gap:8px;align-items:center">'+ICON.phone+'Telefon</button><button type="button" class="link quiet" data-a="go" data-v="notausgang">Notausgang</button></div></div>';};
+
+V.session=()=>{const s=SES;if(!s)return V.heute();const x=s.plan[s.i];const dur=stepDur(x);const fertig=s.elapsed>=dur;const letzter=s.i===s.plan.length-1;
+  const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);
+  return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="sesAbbruch">Abbrechen</button><span class="small muted">'+esc(titel)+' · '+esc(PHASEN[S.phase].kurz)+'</span></div>'+
+  '<ol class="steps" aria-label="Ablauf">'+s.plan.map((y,k)=>'<li class="step '+(k<s.i?'done':k===s.i?'cur':'')+'" '+(k===s.i?'aria-current="step"':'')+'><span class="sd"></span><span class="grow">'+esc(y.titel)+'</span><span class="muted" style="font-weight:400">'+(y.sek!=null?y.sek+' Sek.':y.min+' Min.')+'</span></li>').join('')+'</ol>'+
+  (s.warm>0?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(s.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+(x.pacer||x.blick?'Setz dich zurecht. Die Übung beginnt nach dem Ton.':'Lies in Ruhe, dann leg das Handy mit dem Display nach unten. Die Zeit läuft nach dem Ton.')+'</p>'+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(s.warm-s.warmEl)+'</span><span class="ring-sub">Sekunden</span>',s.warmEl/s.warm,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
+  '<section class="card grow"><div class="row between" style="align-items:baseline"><h1 class="h2">'+esc(x.titel)+'</h1>'+(x.pacer?'<span class="timer" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(dur-s.elapsed)+'</span>':'')+'</div><p class="soft">'+esc(x.text)+'</p>'+(x.pacer?pacerHtml(s.elapsed/dur):ringHtml('<span class="ring-time" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(dur-s.elapsed)+'</span><span class="ring-sub">von '+(x.sek!=null?x.sek+' Sek.':x.min+' Min.')+'</span>',s.elapsed/dur))+(S.settings.demo&&x.sek==null?'<p class="xs muted" style="text-align:center">Demo-Tempo: 1 Minute dauert hier 5 Sekunden.</p>':'')+'<p class="status" id="s-status">'+sesStatus(x,fertig)+'</p>'+
+  (x.leere&&!fertig?'<button type="button" class="btn sec small" data-a="leereGenug">Genug für heute. Zählt als geschafft.</button>':'')+'</section>'+
+  '<button type="button" class="btn" data-a="sesWeiter" '+(fertig?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
+
+V.journal=()=>{const f=fragen();const d=day();if(d.journal&&!ui.f._init){ui.f.a=d.journal.a;ui.f.b=d.journal.b;ui.f.aud_a=d.journal.aud_a;ui.f.aud_b=d.journal.aud_b;}ui.f._init=1;
+  return '<div class="scr"><div class="row between small muted"><span>Morgen-Journal</span><span>'+fmtDay(today())+'</span></div><h1 class="h1s">Was hast du gefunden?</h1>'+(()=>{const lb=letzterBesuch();return lb?'<section class="card"><span class="eyebrow">Beim letzten Mal in '+esc(PHASEN[S.phase].name)+'</span><span class="xs muted">'+fmtShort(lb.tag)+'</span><blockquote class="quote" style="font-size:15px">„'+esc(lb.text)+'“</blockquote><p class="xs muted">Dieselbe Frage, ein anderer Tag. Was ist heute anders?</p></section>':'';})()+feld('a',f[0],20)+feld('b',f[1],20)+'<div class="grow"></div><button type="button" class="btn" data-a="journalOk" data-ready="a,b">Weiter zur Tagesskala</button><p class="xs muted" data-why="a,b" aria-live="polite" style="text-align:center"></p></div>';};
+
+V.skala=()=>{const d=day();if(d.skala&&!ui.f._init){ITEMS.forEach(i=>{ui.f['sk_'+i.k]=d.skala[i.k];});}ui.f._init=1;const alle=ITEMS.every(i=>ui.f['sk_'+i.k]!=null);
+  return '<div class="scr"><div class="col" style="gap:6px"><div class="row between small muted"><span>Tagesskala</span><span>'+fmtDay(today())+'</span></div><h1 class="h1s">Wie geht es dir gerade?</h1><p class="small muted">Fünf kurze Fragen. Rosa markierte Werte zählen für die Ampel, aber erst, wenn sie an mehreren Tagen vorkommen.</p></div>'+
+  ITEMS.map(i=>{const v=ui.f['sk_'+i.k];const w=istWarn(i.k,v);return '<div class="col" style="gap:6px">'+qlab('sk_'+i.k,i.frage,'l-'+i.k)+seg('sk_'+i.k,[0,1,2,3,4],null,5,val=>istWarn(i.k,val))+'<div class="row between xs muted"><span>'+i.lo+'</span>'+'<span>'+i.hi+'</span></div></div>';}).join('')+
+  '<button type="button" class="btn" data-a="skalaOk" '+(alle?'':'disabled')+'>Freigeben</button></div>';};
+
+V.heute=()=>{const T=today(),d=peek(T),n=now(),a=ampelAm(),pi=phaseInfo();const vor=n.getHours()<S.settings.morgen&&!(d&&d.frei);
+  let h1,sub;
+  if(vor){h1='Guten Morgen.';sub='Das Morgenfenster beginnt um '+S.settings.morgen+' Uhr.';}
+  else if(d&&d.notausgang){h1='Heute ausgelassen.';sub='Frei bis morgen, '+S.settings.morgen+' Uhr. Dein Satz geht in den Wochencheck ein.';}
+  else{h1='Frei für heute.';sub=[d&&d.anker?'Anker geübt':null,d&&d.journal?'Journal geschrieben':null,d&&d.skala?'Skala ausgefüllt':null].filter(Boolean).join(' · ');}
+  const cards=[];
+  const sw=!vor&&S.created?faelligeSchwelle():null;
+  if(sw)cards.push('<section class="card hl"><span class="chip pink" style="align-self:flex-start">Schwelle '+esc(sw.zeit)+'</span><h2 class="h2">'+esc(sw.name)+'</h2><p class="small muted">30 Sekunden, bevor es losgeht.</p><button type="button" class="btn small" data-a="swAnker" data-v="'+esc(sw.id)+'">Anker</button></section>');
+  // Stammfenster
+  const st=S.settings.stamm;const [sh,sm]=st.zeit.split(':').map(Number);const sMin=sh*60+sm;const jetzt=n.getHours()*60+n.getMinutes();
+  const stammTag=st.tage.includes(dow(T));const hauptHeute=d?d.haupt.filter(h=>h.typ==='haupt').length:0;
+  if(S.phase!=='probe'&&stammTag&&!hauptHeute&&!(d&&d.stammSkip)&&!vor){
+    if(jetzt>=sMin-30&&jetzt<=sMin+120)cards.push('<section class="card hl"><span class="chip pink" style="align-self:flex-start">Stammfenster '+st.zeit+'</span><h2 class="h2">Zeit für die Hauptpraxis.</h2><div class="btnrow"><button type="button" class="btn small" data-a="uebung" data-v="haupt" data-ctx="stamm">Starten</button><button type="button" class="btn sec small" data-a="stammSkip">Heute nicht</button></div></section>');
+    else if(jetzt>sMin+120)cards.push('<section class="card"><strong>Das Stammfenster um '+st.zeit+' ist vorbei.</strong><p class="small muted">Heute noch keine Hauptpraxis.</p><div class="btnrow"><button type="button" class="btn small" data-a="uebung" data-v="haupt" data-ctx="stamm">Jetzt nachholen</button><button type="button" class="btn sec small" data-a="stammSkip">Begründen</button></div></section>');
+  }
+  if(n.getHours()>=21&&!(d&&d.abend)&&!vor)cards.push('<section class="card hl"><span class="chip pink" style="align-self:flex-start">21:00</span><h2 class="h2">Abend-Rückschau</h2><p class="small muted">Zwei Fragen, zwei Minuten.</p><button type="button" class="btn small" data-a="go" data-v="abend">Jetzt</button></section>');
+  if(dow(T)===6&&n.getHours()>=17&&!S.checks[weekStart(T)])cards.push('<section class="card hl"><span class="chip pink" style="align-self:flex-start">Sonntag</span><h2 class="h2">Wochencheck</h2><p class="small muted">Etwa fünf Minuten. Danach steht die Ampel für die nächste Woche.</p><button type="button" class="btn small" data-a="wcStart">Starten</button></section>');
+  // Wochenstreifen
+  const tage=range(addDays(T,-6),T);
+  const strip='<div class="strip">'+tage.map(k=>{const x=peek(k);const heute=k===T;let cls='leer',inh='';let lab=WT_LANG[dow(k)]+': ';
+    if(x&&x.notausgang){cls='n';inh='N';lab+='Notausgang';}else if(x&&x.anker){cls=heute?'heute':'ok';inh=ICON.check;lab+='absolviert';}else{inh=heute?'':'–';lab+=heute?'offen':'nicht absolviert';}
+    return '<div class="sday"><span style="'+(heute?'font-weight:700;color:var(--ink)':'')+'">'+WT[dow(k)]+'</span><span class="mark '+cls+'" role="img" aria-label="'+esc(lab)+'">'+inh+'</span></div>';}).join('')+'</div>';
+  const absolv=tage.filter(k=>{const x=peek(k);return x&&x.anker;}).length;const notaus=tage.filter(k=>{const x=peek(k);return x&&x.notausgang;}).length;
+  // Phase
+  const min=pi.def.min?pi.def.min*7:null;const hw=sessionsIn(weekStart(T),T,'haupt');
+  const aufgaben=wochenAufgaben(T);
+  return '<div class="scr tabbed"><div class="row between small muted"><span>'+fmtDay(T)+' · '+hm(n)+'</span><span>'+esc(phaseLabel())+'</span></div>'+
+  '<div class="col" style="gap:8px"><h1 class="h1">'+h1+'</h1><p class="small muted">'+esc(sub)+'</p><div class="row wrap">'+ampelChip(a.stufe)+passungHeute()+'</div></div>'+
+  (vor&&!d?'':'')+cards.join('')+
+  '<section class="card" aria-labelledby="h-tage"><h2 id="h-tage" class="lab">Letzte 7 Tage</h2>'+strip+'<p class="xs muted">'+absolv+' von 7 absolviert'+(notaus?' · N = Notausgang':'')+'</p></section>'+
+  '<section class="card" aria-labelledby="h-ph"><div class="row between" style="align-items:baseline"><h2 id="h-ph" class="lab">'+(S.phase==='probe'?'Probephase':'Schwerpunkt: '+esc(pi.def.name))+'</h2><span class="xs muted">seit '+seitTagen(pi.tag)+'</span></div>'+
+  '<p class="small">'+(S.phase==='probe'?'Hauptpraxis in der Probephase bisher: '+sessionsIn(S.phaseStart||T,T,'haupt')+' von 5.':'Hauptpraxis diese Woche: '+hw+' von 3–5 · Leere heute '+leereMin()+' Min.')+'</p></section>'+
+  (!vor?'<section class="card" aria-labelledby="h-bg"><div class="row between" style="align-items:baseline"><h2 id="h-bg" class="lab">Begegnung · '+esc(bFokus().name)+'</h2><span class="xs muted">heute '+(d?d.begeg.length:0)+' notiert</span></div><p class="small">'+esc(bUebung().titel)+'</p><div class="btnrow"><button type="button" class="btn sec small" data-a="bnotiz">Notiz</button><button type="button" class="btn sec small" data-a="go" data-v="begegnung">Mehr</button></div></section>':'')+
+  (aufgaben.length?'<section class="card" aria-labelledby="h-auf"><h2 id="h-auf" class="lab">Diese Woche</h2><div class="list">'+aufgaben.join('')+'</div></section>':'')+
+  '<div class="btnrow"><button type="button" class="btn small" data-a="go" data-v="zeit">Ich habe Zeit</button><button type="button" class="btn sec small" data-a="notiz">'+ICON.pen+'Schnellnotiz</button></div>'+
+  (S.phase==='3'?'<button type="button" class="btn sec small" data-a="angstStart">Angst-Protokoll</button>':'')+
+  tabs('heute')+'</div>';};
+
+V.begegnung=()=>{const T=today(),s=bStufe(),k=bFokus(T),u=bUebung(),ln=letzteNotiz(k.k,weekStart(T)),a=ampelAm().stufe,d=peek(T);const heute=d?d.begeg.length:0;
+  const w=bIn(addDays(T,-6),T);const fern=w.filter(b=>b.kon==='ferner').length;
+  const aus={};w.forEach(b=>{if(b.aus)aus[b.aus]=(aus[b.aus]||0)+1;});const top=Object.keys(aus).sort((x,y)=>aus[y]-aus[x])[0];
+  const proKat=BKAT.map(c=>{const x=w.filter(b=>b.kat===c.k);return{c:c,n:x.length,gut:x.filter(b=>b.gew>=2).length,rueck:x.reduce((z,b)=>z+(b.rueck||0),0)};}).filter(x=>x.n);
+  const erledigt=id=>d&&d.schwellen.some(x=>x.id===id);const bim=S.begegnung.impuls;
+  return '<div class="scr tabbed"><div class="row between small muted"><span>'+fmtDay(T)+'</span><span>'+esc(phaseLabel())+'</span></div>'+
+  '<h1 class="h1s">Begegnung</h1>'+
+  '<section class="card hl"><span class="eyebrow">Dein Kreis: '+esc(kreisNamen(s))+'</span>'+(S.runde>1&&s>1?'<span class="chip pink" style="align-self:flex-start">Feld der Woche: '+esc(k.name)+'</span>':'')+'<h2 class="h2">'+esc(u.titel)+'</h2><p class="soft">'+esc(u.text)+'</p><p class="xs muted">Übung für '+esc(k.lang)+', zum Beispiel '+esc(k.bsp)+'.'+(s>1?' In den anderen Feldern gelten ihre Übungen weiter.':'')+' Wähl 1–3 Begegnungen am Tag bewusst aus.</p>'+(ln?'<p class="xs muted">Zuletzt in diesem Feld, '+fmtShort(ln.tag)+':</p><blockquote class="quote" style="font-size:15px">„'+esc(ln.text)+'“</blockquote>':'')+
+   (a==='gelb'?'<p class="xs">Ampel gelb: Der Kreis bleibt, wie er ist, bis die Ampel wieder grün ist.</p>':'')+
+   '<div class="row wrap"><span class="chip '+(heute?'purple':'')+'">Heute '+heute+' notiert</span>'+(fern?'<span class="chip pink">Kontakt ferner: '+fern+'× in 7 Tagen</span>':'')+'</div>'+
+   '<div class="btnrow"><button type="button" class="btn small" data-a="bnotiz">Notiz</button><button type="button" class="btn sec small" data-a="swAnker" data-v="">Anker</button></div></section>'+
+  '<section class="card"><h2 class="lab">Grundsätze</h2><div class="list">'+BGRUND.map(g=>'<div class="li" style="align-items:flex-start;padding-block:8px"><span class="small"><strong>'+esc(g[0])+'</strong><br><span class="soft">'+esc(g[1])+'</span></span></div>').join('')+'</div></section>'+
+  '<section class="card"><div class="row between"><h2 class="lab">Schwellen</h2><button type="button" class="link" data-a="swNeu" style="min-height:36px">Hinzufügen</button></div><p class="xs muted">Vor festen Übergängen erinnert dich die App an einen 30-Sekunden-Anker. Eine Einladung, keine Pflicht.</p>'+
+   (S.begegnung.schwellen.length?'<div class="list">'+S.begegnung.schwellen.map(x=>'<div class="li"><span class="small"><strong>'+esc(x.name)+'</strong><br><span class="muted">'+esc(swInfo(x))+'</span></span><span class="row">'+(erledigt(x.id)?'<span class="chip good">heute</span>':'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="swAnker" data-v="'+esc(x.id)+'">Anker</button>')+'<button type="button" class="icon" data-a="swWeg" data-v="'+esc(x.id)+'" aria-label="'+esc(x.name)+' entfernen">'+ICON.x+'</button></span></div>').join('')+'</div>':'<p class="small muted">Noch keine Schwellen.</p>')+'</section>'+
+  '<section class="card"><h2 class="lab">Stiller Impuls</h2>'+(bim.n?'<div class="row" style="align-items:flex-start"><span class="vib" aria-hidden="true" style="margin-top:6px"><i style="width:10px"></i><i style="width:10px"></i><i style="width:26px"></i></span><span class="small">'+bim.n+'× am Tag, '+bim.von+' bis '+bim.bis+' Uhr. Nur Vibration: kurz, kurz, lang.</span></div><p class="xs muted">Die Vibration heißt: Wer schaut gerade? Du musst nicht aufs Handy schauen.'+(d&&d.bimp&&d.bimp.n?' Heute '+d.bimp.b+' von '+d.bimp.n+' bemerkt.':'')+'</p>':'<p class="small muted">Aus. In den Optionen einschalten.</p>')+'</section>'+
+  '<section class="card"><h2 class="lab">Letzte 7 Tage</h2>'+(proKat.length?'<table class="tbl"><thead><tr><td>Mit wem</td><td>Notizen</td><td>zeitweise+</td><td>zurück</td></tr></thead><tbody>'+proKat.map(x=>'<tr><td>'+esc(x.c.name)+'</td><td>'+x.n+'</td><td>'+x.gut+'</td><td>'+x.rueck+'×</td></tr>').join('')+'</tbody></table>'+(top&&aus[top]>=2?'<p class="small">Hat dich am häufigsten herausgezogen: <strong>'+esc(top)+'</strong> ('+aus[top]+'×)</p>':''):'<p class="small muted">Noch keine Notizen.</p>')+'</section>'+
+  '<section class="card"><h2 class="lab">Kreis</h2><div class="row" style="justify-content:center">'+kreisSvg(s)+'</div><p class="xs muted" style="text-align:center">innen Fremde, außen Familie</p><div class="list">'+BKAT.map((c,i)=>{const n=i+1;const zu=n>bMax();const st=n<=s?'<span class="chip purple">im Kreis</span>':zu?'<span class="xs muted" style="white-space:nowrap">mit '+esc(PHASEN[stufePhase(n)].name)+'</span>':'<span class="xs muted" style="white-space:nowrap">kann dazukommen</span>';return '<div class="li"><span class="small"><strong>'+esc(c.name)+'</strong><br><span class="muted">'+esc(BSTUFE[i].titel)+'</span></span>'+st+'</div>';}).join('')+'</div><p class="xs muted">Ein Feld kommt im Wochencheck dazu, wenn du im äußersten Feld mindestens 4 Begegnungen in 14 Tagen notiert hast, der Kontakt höchstens einmal ferner war und die Ampel grün ist. Wie gewahr du warst, zählt dafür nicht. Der Kreis wird größer, nicht höher.</p></section>'+
+  tabs('begegnung')+'</div>';};
+
+V.bnotiz=()=>{if(!ui.f._init){ui.f.bKat=bFokus().k;ui.f._init=1;}const f=ui.f;const bereit=f.bKat&&f.bGew!=null&&f.bRueck!=null&&f.bKon;
+  return '<div class="scr"><div class="row between"><button type="button" class="link" data-a="go" data-v="'+(ui.bnZurueck||'begegnung')+'">Zurück</button><span class="small muted">Notiz nach Begegnung · '+hm(now())+'</span></div><h1 class="h1s">Wie war der Kontakt?</h1>'+
+  '<div class="col" style="gap:6px">'+qlab('bKat','Mit wem?')+''+seg('bKat',BKAT.map(c=>c.k),BKAT.map(c=>c.name),3)+'</div>'+
+  '<div class="col" style="gap:6px">'+qlab('bGew','Wie gewahr warst du?')+''+seg('bGew',[0,1,2,3],BGEW,4)+'</div>'+
+  '<div class="col" style="gap:6px">'+qlab('bRueck','Wie oft bist du zurückgekehrt?')+''+seg('bRueck',[0,1,2,3],['0','1','2','3+'],4)+'<p class="xs muted">Jedes Bemerken, dass du weg warst, zählt.</p></div>'+
+  '<div class="col" style="gap:6px">'+qlab('bKon','Der Kontakt war …')+''+seg('bKon',['naeher','gleich','ferner'],['näher','wie sonst','ferner'],3,v=>v==='ferner')+'</div>'+
+  (f.bKon==='ferner'?'<div class="card" style="border-color:var(--pink)"><p class="small">Ferner ist ein Hinweis, kein Fortschritt. Spür jetzt die Füße, atme aus und schau die nächste Person bewusst an. Dreimal in einer Woche stellt die Ampel auf Gelb.</p></div>':'')+
+  '<div class="col" style="gap:6px">'+qlab('bAus','Was hat dich herausgezogen?',null,' <span class="muted" style="font-weight:400">· optional</span>')+''+stichChips('bAus',BAUS,2)+'</div>'+
+  feld('bt','Ein Satz, wenn du magst',0)+
+  '<button type="button" class="btn" data-a="bnotizOk" '+(bereit?'':'disabled')+'>Speichern</button></div>';};
+
+function wochenAufgaben(T){const ws=weekStart(T),ms=T.slice(0,8)+'01',out=[];const n=id=>sessionsIn(ws,T,id);
+  const zeile=(titel,status,btn)=>'<div class="li"><span>'+titel+'</span><span class="row">'+status+(btn||'')+'</span></div>';
+  const erl='<span class="chip good">erledigt</span>';
+  const start=id=>'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="uebung" data-v="'+id+'">Starten</button>';
+  if(S.phase==='1')out.push(zeile('Harding-Experiment',n('harding')?erl:'',n('harding')?'':start('harding')));
+  if(S.phase==='2')out.push(zeile('Metta mit Wendung',n('metta')>=2?erl:'<span class="xs muted">'+n('metta')+' von 2</span>',n('metta')>=2?'':start('metta')));
+  if(S.phase==='3'){out.push(zeile('Schattenarbeit',n('schatten')?erl:'',n('schatten')?'':'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="schattenStart">Starten</button>'));
+    out.push(zeile('Scheitern riskieren',n('scheitern')?erl:'',n('scheitern')?'':'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="scheitern">Eintragen</button>'));
+    const wm=sessionsIn(ms,T,'wuenschen');out.push(zeile('Wünschen ohne zu brauchen <span class="xs muted">monatlich</span>',wm?erl:'',wm?'':start('wuenschen')));}
+  if(S.phase!=='probe'){const nb=bIn(addDays(T,-6),T).length;out.push(zeile('Begegnungen notiert <span class="xs muted">7 Tage</span>',nb>=3?erl:'<span class="xs muted">'+nb+' von 3</span>',nb>=3?'':'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="bnotiz">Notiz</button>'));}
+  return out;}
+
+V.zeit=()=>{const z=ui.zeit;const list=empfehlungen(z.t,z.ort);const top=list[0];z.top=top.id;const alt=list.slice(1,3);
+  const chip=(k,w,lab)=>'<button type="button" class="segb '+(z[k]===w?'on':'')+'" aria-pressed="'+(z[k]===w)+'" data-a="zeitSet" data-k="'+k+'" data-v="'+w+'">'+lab+'</button>';
+  return '<div class="scr"><div class="row between"><button type="button" class="link" data-a="go" data-v="heute">Zurück</button><span class="small muted">'+hm(now())+' · '+esc(PHASEN[S.phase].kurz)+'</span></div>'+
+  '<div class="col" style="gap:6px"><h1 class="h1s">Du hast Zeit.</h1><p class="small muted">Wie viel, und wo bist du?</p></div>'+
+  '<div class="col" style="gap:8px"><p class="lab" id="l-z">Zeit</p><div class="seg" role="group" aria-labelledby="l-z" style="grid-template-columns:repeat(4,minmax(0,1fr))">'+[5,15,30,60].map(m=>chip('t',m,m+' Min.')).join('')+'</div></div>'+
+  '<div class="col" style="gap:8px"><p class="lab" id="l-o">Ort</p><div class="seg" role="group" aria-labelledby="l-o" style="grid-template-columns:repeat(2,minmax(0,1fr))">'+ORTE.map(o=>chip('ort',o,ORT_NAME[o])).join('')+'</div></div>'+
+  '<section class="card hl" aria-label="Empfehlung"><span class="chip pink" style="align-self:flex-start">Nächster Schritt</span><h2 class="h2">'+esc(top.titel)+'</h2><span class="small muted">'+esc(top.dauer)+'</span><p>'+esc(top.grund)+'</p><button type="button" class="btn small" data-a="empfStart" data-v="'+top.id+'">Starten</button></section>'+
+  (alt.length?'<div class="col" style="gap:0"><p class="lab">Oder</p><div class="list">'+alt.map(x=>'<div class="li"><span>'+esc(x.titel)+' <span class="xs muted">'+esc(x.dauer)+'</span></span><button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="empfStart" data-v="'+x.id+'">Starten</button></div>').join('')+'</div></div>':'')+
+  (ampelAm().stufe!=='gruen'?'<p class="xs muted">Die Ampel steht auf '+STUFE_NAME[ampelAm().stufe]+'. Deshalb schlägt die App nur Kohärenz und Erdung vor.</p>':'')+'</div>';};
+
+V.nach=()=>{const n=ui.nach;if(!n)return V.heute();const probe=S.phase==='probe'&&n.typ==='haupt';
+  const fr={haupt:'Zwei Sätze: Was hast du gefunden?',breathwork:'Was blieb, als der Zustand ging?',harding:'Was fandst du dort, wo andere dein Gesicht sehen?',metta:'Wer wünschte hier wem?',wuenschen:'Wer wollte das? Und was blieb ohne es?'}[n.typ]||'Eine Zeile, wenn du magst.';
+  if(!ui.f._init){ui.f.ort=n.ort;ui.f._init=1;}
+  return '<div class="scr"><div class="row between small muted"><span>'+esc(uebName(n.typ))+'</span><span>'+n.min+' Min. · '+n.at+'</span></div><h1 class="h1s">Gut.</h1>'+feld('nt',fr,n.typ==='breathwork'?20:0)+
+  (probe?'<div class="card"><strong>Probephase: eine Zeile zum Fenster</strong><p class="lab">Ort</p>'+seg('ort',ORTE,ORTE.map(o=>ORT_NAME[o]),2)+'<p class="lab">Gestört?</p>'+seg('gestoert',[false,true],['Nein','Ja'],2)+'<p class="lab">Qualität</p>'+seg('qual',[0,1,2,3,4],null,5)+'<div class="row between xs muted"><span>zäh</span><span>klar</span></div></div>':'')+
+  '<div class="grow"></div><button type="button" class="btn" data-a="nachOk" data-ready="nt" '+(probe&&(ui.f.qual==null||ui.f.gestoert==null||!ui.f.ort)?'disabled':'')+'>Speichern</button></div>';};
+
+V.notausgang=()=>'<div class="scr night"><span class="small muted">Notausgang</span><div class="col"><h1 class="h1s" style="font-size:36px">Ausweichen ist erlaubt.</h1><p class="lead">Es wird nur nicht verschwiegen. Ein Satz genügt.</p></div>'+feld('na',ANLASS_FRAGE.notausgang,20,{mic:false})+
+  '<div class="col" style="gap:8px"><p class="lab">Stichwort <span class="muted" style="font-weight:400">· optional</span></p>'+stichChips('naStich')+'</div><div class="grow"></div><button type="button" class="btn" data-a="notausOk" data-ready="na">Freigeben</button><button type="button" class="link quiet" data-a="go" data-v="gate">Zurück zur Praxis</button></div>';
+
+V.frei=()=>{const d=peek(today());const na=d&&d.notausgang;return '<div class="scr night"><span class="small muted">Notausgang</span><div class="grow col" style="justify-content:center;gap:14px"><h1 class="h1s">Frei bis morgen, '+S.settings.morgen+' Uhr.</h1>'+(na?'<blockquote class="quote">„'+esc(na.text)+'“'+(na.stichwort?' <span class="xs muted">· '+esc(na.stichwort)+'</span>':'')+'</blockquote>':'')+'<p class="soft">Der Tag zählt als ausgelassen. Dein Satz geht in den Wochencheck ein. Einzelne Tage bleiben dort unkommentiert, erst eine Häufung wird angesprochen.</p></div><button type="button" class="btn" data-a="go" data-v="heute">Weiter</button></div>';};
+
+const INFO_ABEND={ea:'Ein konkreter Moment, in dem du ganz „jemand“ warst: eine Rolle, ein Gefühl oder eine Geschichte, ohne Abstand dazu. Ein Satz reicht: die Situation und wer du darin warst. Kein Urteil, nur finden. Beispiel: „Beim Abendessen, als es laut wurde: Ich war der, der recht haben muss.“',eb:'Was in diesem Moment da war, ohne sich zu verändern: das Bemerken, der Raum, das Hören oder Sehen selbst. Kein ruhiges Gefühl und kein nachträgliches „eigentlich war alles gut“; der Ärger durfte ganz da sein. Findest du nichts, schreib „nichts gefunden“. Beispiel: „Das Hören. Der Ärger war darin, das Hören selbst war nicht ärgerlich.“'};
+V.abend=()=>{const d=day();if(d.abend&&!ui.f._init){ui.f.ea=d.abend.a;ui.f.eb=d.abend.b;}ui.f._init=1;return '<div class="scr"><div class="row between"><button type="button" class="link" data-a="go" data-v="heute">Zurück</button><span class="small muted">Abend-Rückschau</span></div><h1 class="h1s">Wie war der Tag?</h1>'+(!d.begeg.length?'<div class="card"><p class="small">Heute noch keine Begegnung notiert.</p><button type="button" class="btn sec small" data-a="bnotiz">Nachtragen</button></div>':'')+feld('ea','Wo habe ich mich heute identifiziert?',0,{info:INFO_ABEND.ea})+feld('eb','Was blieb unberührt?',0,{info:INFO_ABEND.eb})+'<div class="grow"></div><button type="button" class="btn" data-a="abendOk">Speichern</button></div>';};
+
+const SCHATTEN_PLAN=[
+  {titel:'Ankommen',text:'Zwei Minuten Kohärenzatmung. Dann die Augen schließen, wenn es sich gut anfühlt.',pacer:true},
+  {titel:'Die Gestalt kommen lassen',text:'Lass ein Bild entstehen, ohne es zu machen. Wie sieht die Gestalt aus? Wo steht sie, wie hält sie sich?'},
+  {titel:'Sprechen lassen',text:'Frag: Was willst du mir sagen? Lass die Antwort kommen, auch wenn sie unbequem ist. Halte fest, was kommt.',feld:'s3'},
+  {titel:'Was brauchst du?',text:'Frag, was die Gestalt braucht. Nichts lösen, nur hören und festhalten.',feld:'s4'},
+  {titel:'Wer hat euch gesehen?',text:'Zum Schluss: Wer hat euch beide gesehen, dich und die Gestalt? Bleib einen Moment dort.'}];
+function gestalt(){const w=Math.floor(diffDays(S.phaseStart||today(),today())/7);return w%2===0?'der Vater, der versagt':'der, der sich vor anderen blamiert';}
+V.schatten=()=>{const s=ui.schatten||(ui.schatten={i:0});const x=SCHATTEN_PLAN[s.i];const letzter=s.i===SCHATTEN_PLAN.length-1;
+  const ausH={};S.begegnung.merk.slice(-4).forEach(m=>{ausH[m.ausloeser]=(ausH[m.ausloeser]||0)+m.n;});const topA=Object.keys(ausH).sort((a,b)=>ausH[b]-ausH[a])[0];
+  return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="go" data-v="heute">Abbrechen</button><span class="small muted">Schattenarbeit · '+(s.i+1)+' von 5</span></div>'+
+  '<div class="row" role="img" aria-label="Schritt '+(s.i+1)+' von 5" style="gap:6px">'+SCHATTEN_PLAN.map((_,k)=>'<span style="width:28px;height:6px;border-radius:3px;background:'+(k===s.i?'var(--pink)':k<s.i?'var(--accent)':'var(--line)')+'"></span>').join('')+'</div>'+
+  '<div class="col"><span class="eyebrow">Diese Woche: '+esc(gestalt())+'</span><h1 class="h1s">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p>'+(s.i===1&&topA?'<p class="small muted">Aus deinen Begegnungen: „'+esc(topA)+'“ zog dich zuletzt '+ausH[topA]+'× heraus. Die Gestalt darf damit zu tun haben.</p>':'')+'</div>'+(x.pacer?pacerHtml():'')+(x.feld?feld(x.feld,'Was kommt',0):'')+
+  '<div class="grow"></div><p class="small muted">Wird es zu viel: Kohärenzatmung, dann aufhören. Das zählt. <button type="button" class="link" data-a="angstStart" style="min-height:0;padding:0">Angst-Protokoll</button></p>'+
+  '<div class="btnrow"><button type="button" class="btn sec" data-a="schattenZurueck" '+(s.i===0?'disabled':'')+'>Zurück</button><button type="button" class="btn" data-a="'+(letzter?'schattenOk':'schattenWeiter')+'">'+(letzter?'Abschließen':'Weiter')+'</button></div></div>';};
+
+const ANGST_PLAN=[
+  {titel:'Eine Minute Kohärenzatmung.',text:'Im Konflikt zu Hause danach kurz: Welche Abwehr läuft gerade, Kampf, Flucht, Erstarren oder Unterwerfung? Und wer bemerkt sie?',pacer:true},
+  {titel:'Die Geschichte ablegen.',text:'„Das geht schief, weil …“ Den Satz bemerken und liegen lassen.'},
+  {titel:'Die Angst als Empfindung spüren.',text:'Wo sitzt sie? Brust, Bauch, Kiefer? Ganz hineingehen, nicht wegatmen.'},
+  {titel:'Wird das, in dem die Angst erscheint, selbst ängstlich?',text:'Nicht antworten. Hinschauen.'},
+  {titel:'Aus dem handeln, was jetzt klar ist.',text:'Nicht aus der Angst und nicht gegen sie.'}];
+V.angst=()=>{const s=ui.angst||(ui.angst={i:0});const x=ANGST_PLAN[s.i];const letzter=s.i===ANGST_PLAN.length-1;
+  return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="go" data-v="heute">Schließen</button><span class="small muted">Angst-Protokoll · '+(s.i+1)+' von 5</span></div><div class="grow col" style="justify-content:center;gap:14px"><h1 class="h1s" style="font-size:33px">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p>'+(x.pacer?pacerHtml():'')+(letzter?feld('ag','Eine Zeile, wenn du magst',0,{mic:false,ph:'Was war da?'}):'')+'</div>'+
+  (letzter?'<button type="button" class="btn" data-a="angstOk">Fertig</button>':'<button type="button" class="btn" data-a="angstWeiter">Weiter</button>')+'</div>';};
+
+V.tagebuch=()=>{const keys=Object.keys(S.days).sort().reverse();
+  const tag=k=>{const d=S.days[k];const offen=!!ui.offen[k];const badges=[];if(d.anker)badges.push('<span class="chip purple">Anker</span>');if(d.notausgang)badges.push('<span class="chip warn">Notausgang</span>');if(d.haupt.length)badges.push('<span class="chip">'+d.haupt.length+' Übung'+(d.haupt.length>1?'en':'')+'</span>');if(d.begeg&&d.begeg.length)badges.push('<span class="chip">'+d.begeg.length+' Begegnung'+(d.begeg.length>1?'en':'')+'</span>');if(d.begr.length)badges.push('<span class="chip pink">'+d.begr.length+' Begr.</span>');
+    return '<section class="card"><button type="button" class="dayhead" data-a="tagAuf" data-v="'+k+'" aria-expanded="'+offen+'"><span class="lab">'+fmtDay(k)+'</span><span class="row wrap" style="justify-content:flex-end;gap:4px">'+badges.join('')+'</span></button>'+(offen?'<div class="daybody">'+tagDetail(k)+'</div>':'')+'</section>';};
+  return '<div class="scr tabbed"><div class="row between"><h1 class="h1s">Journal</h1><button type="button" class="btn sec small" style="width:auto" data-a="exportMd">Exportieren</button></div>'+(keys.length?keys.map(tag).join(''):'<p class="muted">Noch keine Einträge.</p>')+tabs('tagebuch')+'</div>';};
+function tagDetail(k){const d=S.days[k];const out=[];
+  if(d.anker)out.push('<p class="small muted">Morgenanker '+d.anker.at+' · '+d.anker.min+' Min. · '+STUFE_NAME[d.anker.variante||'gruen']+'</p>');
+  if(d.journal){out.push('<h4>Morgen</h4>');(d.journal.fragen||fragen()).forEach((f,i)=>{const key=i?'b':'a';out.push('<p><strong>'+esc(f)+'</strong><br>'+esc(d.journal[key]||'')+(d.journal['aud_'+key]?' <span class="chip purple">Sprachnotiz '+mss(d.journal['aud_'+key])+'</span>':'')+'</p>');});}
+  if(d.skala)out.push('<p class="small">Skala: '+ITEMS.map(i=>i.name+' '+d.skala[i.k]).join(' · ')+'</p>');
+  if(d.haupt.length){out.push('<h4>Übungen</h4>');d.haupt.forEach(h=>out.push('<p>'+esc(h.at)+' · '+esc(uebName(h.typ))+' · '+h.min+' Min.'+(h.qualitaet!=null?' · Qualität '+h.qualitaet:'')+(h.gestoert?' · gestört':'')+(h.ort?' · '+ORT_NAME[h.ort]:'')+(h.text?'<br><span class="soft">'+esc(h.text)+'</span>':'')+'</p>'));}
+  if(d.begeg&&d.begeg.length){out.push('<h4>Begegnungen</h4>');d.begeg.forEach(b=>out.push('<p>'+esc(b.at)+' · '+esc(bKatName(b.kat))+' · gewahr '+BGEW[b.gew]+' · '+bRueck(b.rueck)+'× zurück · Kontakt '+(b.kon==='ferner'?'<strong style="color:var(--pink)">ferner</strong>':BKON[b.kon])+(b.aus?' · '+esc(b.aus):'')+(b.text?'<br><span class="soft">'+esc(b.text)+'</span>':'')+(b.aud?' <span class="chip purple">Sprachnotiz '+mss(b.aud)+'</span>':'')+'</p>'));}
+  if(d.schwellen&&d.schwellen.length)out.push('<p class="small muted">Schwellen-Anker: '+d.schwellen.map(x=>esc(x.at+' '+(x.name||''))).join(' · ')+'</p>');
+  if(d.notizen.length){out.push('<h4>Notizen</h4>');d.notizen.forEach(x=>out.push('<p>'+esc(x.at)+' · '+esc(x.text)+(x.aud?' <span class="chip purple">Sprachnotiz '+mss(x.aud)+'</span>':'')+'</p>'));}
+  if(d.abend)out.push('<h4>Abend</h4><p><strong>Wo habe ich mich heute identifiziert?</strong><br>'+esc(d.abend.a||'')+'</p><p><strong>Was blieb unberührt?</strong><br>'+esc(d.abend.b||'')+'</p>');
+  if(d.begr.length){out.push('<h4>Begründungen</h4>');d.begr.forEach(b=>out.push('<p>'+esc(b.at)+' · '+esc(anlassText(b))+'<br>„'+esc(b.text)+'“'+(b.stichwort?' <span class="chip pink">'+esc(b.stichwort)+'</span>':'')+'</p>'));}
+  if(d.impulse&&d.impulse.n)out.push('<p class="small muted">Tagesimpulse: '+d.impulse.b+' von '+d.impulse.n+' bemerkt</p>');
+  if(d.bimp&&d.bimp.n)out.push('<p class="small muted">Stiller Impuls: '+d.bimp.b+' von '+d.bimp.n+' bemerkt</p>');
+  return out.join('')||'<p class="muted small">Keine Einträge.</p>';}
+
+V.check=()=>{const T=today(),a=ampelAm(),ck=S.checks[weekStart(T)];const ks=Object.keys(S.checks).sort().reverse();
+  const vier=begrIn(addDays(T,-27),T);const cnt={};vier.forEach(b=>{const w=b.stichwort||'ohne Stichwort';cnt[w]=(cnt[w]||0)+1;});
+  return '<div class="scr tabbed"><h1 class="h1s">Check</h1>'+
+  '<section class="ampel '+a.stufe+'"><div class="row"><span class="dot '+a.stufe+'"></span><span class="h2" style="font-size:22px">Ampel '+STUFE_NAME[a.stufe].toLowerCase()+'</span></div><p class="small">'+(a.grund?esc(a.grund)+(a.ab?' · seit '+fmtShort(a.ab):''):'Kein Auslöser aktiv.')+'</p></section>'+
+  '<div class="row wrap">'+passungChipS(passungStatus())+(ck?'<span class="chip">Wochencheck erledigt am '+fmtShort(ck.datum)+'</span>':'')+'</div>'+
+  '<button type="button" class="btn" data-a="wcStart">'+(ck?'Wochencheck erneut durchführen':'Wochencheck starten')+'</button><p class="xs muted">Regulär sonntags. In der Testversion jederzeit.</p>'+
+  '<section class="card"><h2 class="lab">Begründungen, letzte 4 Wochen</h2>'+(vier.length?'<div class="row wrap">'+Object.keys(cnt).map(w=>'<span class="chip pink">'+esc(w)+' · '+cnt[w]+'</span>').join('')+'</div><div class="list">'+vier.slice().reverse().slice(0,8).map(b=>'<div class="li" style="align-items:flex-start;padding-block:8px"><span class="small">'+fmtShort(b.tag)+' · '+esc(ANLASS[b.anlass])+'<br><span class="soft">„'+esc(b.text)+'“</span></span></div>').join('')+'</div>':'<p class="small muted">Keine.</p>')+'</section>'+
+  (S.flags.length?'<section class="card"><h2 class="lab">KI-Befunde</h2><div class="list">'+S.flags.slice().reverse().map(f=>'<div class="li"><span class="small">'+esc(SIGNAL[f.signal]||f.signal)+' · '+esc(f.datum||'')+'</span><span class="chip '+(f.status==='bestaetigt'?'warn':'')+'">'+(f.status==='bestaetigt'?'bestätigt':'verworfen')+'</span></div>').join('')+'</div></section>':'')+
+  (ks.length?'<section class="card"><h2 class="lab">Verlauf</h2><div class="list">'+ks.map(k=>{const c=S.checks[k];return '<div class="li"><span class="small">Woche ab '+fmtShort(k)+'</span><span class="row">'+ampelChip(c.ampel)+passungChip(c.passung)+'</span></div>';}).join('')+'</div></section>':'')+
+  '<button type="button" class="btn sec small" data-a="kiStart">KI-Auswertung dieser Woche</button>'+tabs('check')+'</div>';};
+
+V.einst=()=>{const s=S.settings;const bi=S.begegnung.impuls;
+  return '<div class="scr tabbed"><h1 class="h1s">Einstellungen</h1>'+
+  '<section class="card"><h2 class="lab">Morgenfenster</h2><label class="small muted" for="e-morgen">Beginn</label><select id="e-morgen" data-ch="eMorgen">'+[4,5,6,7,8].map(h=>'<option value="'+h+'" '+(s.morgen===h?'selected':'')+'>'+h+':00 Uhr</option>').join('')+'</select><p class="xs muted">Später ist eine Lockerung und braucht einen Satz Begründung.</p></section>'+
+  '<section class="card"><h2 class="lab">Stammfenster</h2><div class="seg" role="group" aria-label="Wochentage" style="grid-template-columns:repeat(7,minmax(0,1fr))">'+WT.map((w,i)=>'<button type="button" class="segb '+(s.stamm.tage.includes(i)?'on':'')+'" aria-pressed="'+s.stamm.tage.includes(i)+'" data-a="stammTag" data-v="'+i+'">'+w+'</button>').join('')+'</div><label class="small muted" for="e-zeit">Uhrzeit</label><input type="time" id="e-zeit" value="'+esc(s.stamm.zeit)+'" data-ch="eZeit"></section>'+
+  '<section class="card"><h2 class="lab">Tagesimpulse pro Tag</h2><select id="e-imp" data-ch="eImpulse">'+[0,5,10,14,20].map(n=>'<option value="'+n+'" '+(s.impulse===n?'selected':'')+'>'+n+'</option>').join('')+'</select></section>'+
+  (NATIVE?(()=>{let g={};try{g=JSON.parse(nat('gateStatus')||'{}');}catch(e){}return '<section class="card"><h2 class="lab">Morgen-Gate</h2><div class="row"><span class="dot '+(g.an?'gruen':'rot')+'"></span><span class="small">'+(g.an?'Bedienungshilfe ist an. Das Gate greift ab '+s.morgen+' Uhr.':'Bedienungshilfe ist aus. Ohne sie sperrt das Gate nur innerhalb der App.')+'</span></div><button type="button" class="btn sec small" data-a="gateEinst">Bedienungshilfen öffnen</button><p class="xs muted">Beim ersten Mal: App-Info von „.“ → ⋮ → „Eingeschränkte Einstellungen zulassen“. Dann unter Bedienungshilfen → Installierte Apps „. Morgen-Gate“ einschalten.</p></section><section class="card"><h2 class="lab">Testmodus</h2><label class="tog"><input type="checkbox" '+(s.testmodus?'checked':'')+' data-a="testmodus"> Testpanel zeigen</label></section>';})():'')+
+  '<section class="card"><h2 class="lab">Darstellung</h2><div class="themes" role="group" aria-label="Farbschema">'+[['system','System'],['hell','Hell'],['dunkel','Dunkel']].map(x=>'<button type="button" class="segb '+(s.theme===x[0]?'on':'')+'" aria-pressed="'+(s.theme===x[0])+'" data-a="theme" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div><p class="xs muted">Die Übungsbildschirme bleiben immer dunkel, damit es früh am Morgen ruhig bleibt.</p></section>'+
+  '<section class="card"><h2 class="lab">Begegnung</h2><p class="small">Kreis: '+esc(kreisNamen())+(S.begegnung.stufeAb?', zuletzt erweitert am '+fmtShort(S.begegnung.stufeAb):'')+'</p><label class="small muted" for="e-bimp">Stiller Impuls pro Tag</label><select id="e-bimp" data-ch="eBImp">'+[0,2,4,6].map(n=>'<option value="'+n+'" '+(bi.n===n?'selected':'')+'>'+(n?n+'×':'aus')+'</option>').join('')+'</select><div class="row" style="gap:10px"><label class="small muted" for="e-bvon">von</label><select id="e-bvon" data-ch="eBVon">'+[6,7,8,9,10,11,12].map(h=>'<option value="'+h+'" '+(bi.von===h?'selected':'')+'>'+h+' Uhr</option>').join('')+'</select><label class="small muted" for="e-bbis">bis</label><select id="e-bbis" data-ch="eBBis">'+[14,15,16,17,18,19,20].map(h=>'<option value="'+h+'" '+(bi.bis===h?'selected':'')+'>'+h+' Uhr</option>').join('')+'</select></div><p class="xs muted">Weniger Impulse ist eine Lockerung und braucht einen Satz Begründung.</p>'+(bStufe()>1?'<button type="button" class="btn sec small" data-a="bStufeZurueck">Kreis verkleinern</button>':'')+'</section>'+
+  '<section class="card"><h2 class="lab">Atembegleitung</h2><div class="seg" role="group" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(s.begleitung===x[0]?'on':'')+'" aria-pressed="'+(s.begleitung===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div></section>'+
+  '<section class="card"><h2 class="lab">Hauptpraxis</h2><label class="tog"><input type="checkbox" '+(s.hauptKurz?'checked':'')+' data-a="eKurz"> Kürzere Hauptpraxis (Erkundung 7–8 statt 10–12 Min.)</label></section>'+
+  '<section class="card"><h2 class="lab">Namen für Platzhalter</h2><label class="xs muted" for="e-namen">Kommagetrennt. Vor der KI-Auswertung werden sie durch [Person 1], [Person 2] ersetzt.</label><input type="text" id="e-namen" value="'+esc(s.namen)+'" data-ch="eNamen" placeholder="zum Beispiel Lena, Jonas"></section>'+
+  '<section class="card"><h2 class="lab">Schwerpunkt</h2><p class="small">'+esc(PHASEN[S.phase].name)+', seit '+(S.phaseStart?fmtShort(S.phaseStart):'–')+'</p>'+(S.phase!=='probe'?'<button type="button" class="btn sec small" data-a="phaseZurueck">Zum vorigen Schwerpunkt</button>':'')+'</section>'+
+  '<section class="card"><h2 class="lab">Daten</h2><div class="btnrow"><button type="button" class="btn sec small" data-a="exportMd">Journal (.md)</button><button type="button" class="btn sec small" data-a="exportJson">Backup (.json)</button></div><label class="btn sec small" for="e-import" style="cursor:pointer">Backup einspielen</label><input type="file" id="e-import" accept=".json,application/json" class="sr" data-ch="eImport"><button type="button" class="btn sec small" data-a="pReset" style="color:var(--crit);border-color:var(--crit)">Alles zurücksetzen</button><p class="xs muted">Speicherort: '+(STORE==='Konto'?'dein Claude-Konto, nur für dich sichtbar':NATIVE?'nur auf diesem Handy':'dieser Browser')+'</p></section>'+
+  tabs('einst')+'</div>';};
+
+/* ---------- Wochencheck ---------- */
+function begrIn(from,to){const out=[];for(const k of range(from,to)){const d=peek(k);if(d)d.begr.forEach(b=>out.push(Object.assign({tag:k},b)));}return out;}
+function vorigerCheck(T){return S.checks[weekStart(addDays(T,-7))]||null;}
+function ampelWoche(T,cds,items){const from=addDays(T,-6);const warn={k:0,w:0,g:0,s:0,u:0};
+  for(const k of range(from,T)){const d=peek(k);if(d&&d.skala)for(const x of Object.keys(warn))if(istWarn(x,d.skala[x]))warn[x]++;}
+  const rot=[],gelb=[],nah=[];const cdsSum=(cds[0]||0)+(cds[1]||0);const name=k=>ITEMS.find(i=>i.k===k).name;
+  if(cdsSum>=5)rot.push('Unwirklichkeit: Summe '+cdsSum+', Rot ab 5');else if(cdsSum>=3)gelb.push('Unwirklichkeit: Summe '+cdsSum+', Gelb ab 3');
+  if(warn.w>=5)rot.push(haeufText('w',warn.w));
+  for(const x of Object.keys(warn)){if(warn[x]>=3&&!(x==='w'&&warn.w>=5))gelb.push(haeufText(x,warn[x]));if(warn[x]===2)nah.push(haeufText(x,2)+', Gelb ab 3');}
+  if((items.bypass||0)>=3)gelb.push('Gefühle spirituell beiseitegeschoben: '+items.bypass+', Gelb ab 3');
+  if((items.ueber||0)>=3)gelb.push('Überlegenheitsgefühl: '+items.ueber+', Gelb ab 3');
+  const fl=S.flags.filter(f=>f.status==='bestaetigt'&&f.am>=from);if(fl.length)gelb.push('Bestätigter KI-Befund: '+fl.map(f=>SIGNAL[f.signal]||f.signal).join(', '));
+  const fern=bFern(T);if(fern>=3)gelb.push('Kontakt in Begegnungen '+fern+'× ferner, Gelb ab 3');else if(fern===2)nah.push('Kontakt in Begegnungen 2× ferner, Gelb ab 3');
+  const v=vorigerCheck(T);if(gelb.length&&!rot.length&&v&&v.ampel==='gelb')rot.push('Gelb zwei Wochen in Folge');
+  const stufe=rot.length?'rot':gelb.length?'gelb':'gruen';return{stufe:stufe,gruende:rot.length?rot:gelb,nah:nah,warn:warn,cdsSum:cdsSum};}
+function musterAuswerten(T){const woche=begrIn(addDays(T,-6),T);const vier=begrIn(addDays(T,-27),T);
+  const prev=[1,2,3].map(i=>begrIn(addDays(T,-6-7*i),addDays(T,-7*i)).length);const muster=[];
+  if(woche.length>=3)muster.push({regel:'haeufung',text:woche.length+' Begründungen in 7 Tagen.',frage:'Was sagen dir diese Sätze nebeneinander?'});
+  const c1={},c4={};woche.forEach(b=>{if(b.stichwort)c1[b.stichwort]=(c1[b.stichwort]||0)+1;});vier.forEach(b=>{if(b.stichwort)c4[b.stichwort]=(c4[b.stichwort]||0)+1;});
+  Object.keys(c4).forEach(w=>{if((c1[w]||0)>=2||c4[w]>=3)muster.push({regel:'stichwort',text:(c1[w]||0)>=2?c1[w]+'× „'+w+'“ in dieser Woche.':c4[w]+'× „'+w+'“ in vier Wochen.',frage:w==='keine Zeit'?'Passt das Stammfenster noch?':'Was steckt hinter „'+w+'“?'});});
+  const ub={};woche.forEach(b=>{if(b.uebung)ub[b.uebung]=(ub[b.uebung]||0)+1;});Object.keys(ub).forEach(u=>{if(ub[u]>=2)muster.push({regel:'ort',text:ub[u]+'× ausgelassen: '+uebName(u)+'.',frage:'Tag oder Übung tauschen?'});});
+  const wt={};vier.forEach(b=>{const w=dow(b.tag);wt[w]=(wt[w]||0)+1;});Object.keys(wt).forEach(w=>{if(wt[w]>=3)muster.push({regel:'ort',text:'Immer '+WT_LANG[w].toLowerCase()+'s: '+wt[w]+'× in vier Wochen.',frage:'Was ist '+WT_LANG[w].toLowerCase()+'s anders?'});});
+  const trend=woche.length>=2&&prev.every(p=>woche.length>p);if(trend)muster.push({regel:'trend',text:'Mehr Begründungen als in jeder der drei Vorwochen: '+prev.slice().reverse().join(', ')+', jetzt '+woche.length+'.',frage:'Ist der Plan gerade zu viel?'});
+  const v=vorigerCheck(T);let passung=muster.length?'pruefen':'passt';
+  if(muster.length&&(trend||woche.length>=5||(v&&v.passung&&v.passung!=='passt')))passung='aendern';
+  return{woche:woche,muster:muster,passung:passung,prev:prev};}
+function offeneUebungen(T){const ws=weekStart(T),out=[];const n=id=>sessionsIn(ws,T,id);
+  if(S.phase==='1'&&n('harding')<1)out.push({id:'harding',titel:'Harding-Experiment'});
+  if(S.phase==='2'&&n('metta')<2)out.push({id:'metta',titel:'Metta mit Wendung, '+n('metta')+' von 2'});
+  if(S.phase==='3'){if(n('schatten')<1)out.push({id:'schatten',titel:'Schattenarbeit'});if(n('scheitern')<1)out.push({id:'scheitern',titel:'Scheitern riskieren'});}
+  const h=sessionsIn(addDays(T,-6),T,'haupt');let hb=0;for(const k of range(addDays(T,-6),T)){const d=peek(k);if(d)hb+=d.begr.filter(b=>b.uebung==='haupt').length;}
+  if(h+hb<3)out.push({id:'haupt',titel:'Hauptpraxis, '+h+' von 3 in 7 Tagen'+(hb?' ('+hb+' schon begründet)':'')});
+  if(S.phase!=='probe'){const nb=bIn(addDays(T,-6),T).length;if(nb<3)out.push({id:'begegnung',titel:'Begegnungen, '+nb+' von 3 notiert'});}
+  return out;}
+function begAuswertung(T,astufe){const w=bIn(addDays(T,-6),T);const s=bStufe();const kat=BKAT[s-1].k;
+  const z=bIn(addDays(T,-13),T).filter(b=>b.kat===kat);const gut=z.filter(b=>b.gew>=2).length;const fernZ=z.filter(b=>b.kon==='ferner').length;const quote=z.length?gut/z.length:0;
+  const hochOk=s<5&&z.length>=4&&fernZ<=1;const erlaubt=s<bMax();
+  const aus={};w.forEach(b=>{if(b.aus)aus[b.aus]=(aus[b.aus]||0)+1;});const top=Object.keys(aus).sort((a,b)=>aus[b]-aus[a])[0]||null;
+  const proKat=BKAT.map(c=>{const x=w.filter(b=>b.kat===c.k);return{k:c.k,name:c.name,n:x.length,gut:x.filter(b=>b.gew>=2).length,rueck:x.reduce((q,b)=>q+(b.rueck||0),0)};}).filter(x=>x.n);
+  return{n:w.length,z:z.length,quote:quote,fern:w.filter(b=>b.kon==='ferner').length,hochOk:hochOk,erlaubt:erlaubt,angebot:hochOk&&erlaubt&&astufe==='gruen',aus:aus,top:top,topN:top?aus[top]:0,proKat:proKat};}
+function phasePruefung(T,stufe){const i=phaseInfo();const def=i.def;if(!def.next)return null;
+  const minOk=i.tag>=minWochen()*7;const lang=S.runde>1&&i.tag>=56;let abs=0,ges=0;for(const k of range(S.phaseStart||T,T)){ges++;const d=peek(k);if(d&&d.anker)abs++;}
+  const quote=ges?abs/ges:0;const v=vorigerCheck(T);const gruen2=stufe==='gruen'&&(S.phase==='probe'||(v&&v.ampel==='gruen'));
+  const stammOk=S.settings.stamm.tage.length>0;
+  return{minOk:minOk,lang:lang,quote:quote,gruen2:gruen2,stammOk:stammOk,next:def.next,ok:minOk&&quote>=.8&&gruen2&&(S.phase!=='probe'||stammOk)};}
+function stammVorschlag(){const cnt={};Object.keys(S.days).forEach(k=>{S.days[k].haupt.forEach(h=>{if(h.typ!=='haupt'||h.gestoert||(h.qualitaet!=null&&h.qualitaet<2))return;const key=dow(k)+'|'+h.at.slice(0,2);cnt[key]=(cnt[key]||0)+1;});});
+  const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).slice(0,2);if(!top.length)return null;return{tage:top.map(x=>Number(x.split('|')[0])),zeit:top[0].split('|')[1]+':00'};}
+function wcStart(){const T=today();ui.wc={s:1,T:T,offene:offeneUebungen(T)};ui.f={};go('wc',true);}
+V.wc=()=>{const w=ui.wc;if(!w)return V.check();const T=w.T;const kopf='<div class="row between"><button type="button" class="link" data-a="go" data-v="check">Abbrechen</button><span class="small muted">Wochencheck · Schritt '+w.s+' von 7</span></div>';
+  if(w.s===1){const alle=CDS.every((_,i)=>ui.f['cds'+i]!=null)&&WOCHENITEMS.every(x=>ui.f['wi_'+x.k]!=null);
+    return '<div class="scr">'+kopf+'<h1 class="h1s">Die Woche im Rückblick</h1><p class="small muted">'+fmtShort(addDays(T,-6))+' bis '+fmtShort(T)+'</p>'+
+    '<section class="card"><h2 class="lab">Selbst und Welt</h2><p class="xs muted">Weite, Stille oder ein leiseres Ich-Gefühl sind hier nicht gemeint. Es geht um Abgetrenntheit, die sich unangenehm anfühlt.</p>'+CDS.map((c,i)=>qlab('cds'+i,c.frage)+seg('cds'+i,[0,1,2,3,4,5],CDS_SKALA,3)).join('')+'</section>'+
+    WOCHENITEMS.map(x=>'<div class="col" style="gap:6px">'+qlab('wi_'+x.k,x.frage)+seg('wi_'+x.k,[0,1,2,3,4],null,5,x.schwelle?(v=>v>=x.schwelle):null)+'<div class="row between xs muted"><span>'+x.lo+'</span><span>'+x.hi+'</span></div></div>').join('')+
+    '<button type="button" class="btn" data-a="wcWeiter" '+(alle?'':'disabled')+'>Weiter</button></div>';}
+  if(w.s===2){const keys=w.offene.map(o=>'wb_'+o.id);
+    return '<div class="scr">'+kopf+'<h1 class="h1s">Offen geblieben</h1><p class="small muted">Für jede offene Übung ein Satz. Muster daraus bespricht Schritt 4.</p>'+w.offene.map(o=>'<section class="card">'+feld('wb_'+o.id,o.titel+': Was hat dich abgehalten?',20,{mic:false})+stichChips('ws_'+o.id)+'</section>').join('')+'<div class="grow"></div><button type="button" class="btn" data-a="wcWeiter" data-ready="'+keys.join(',')+'">Weiter</button></div>';}
+  if(w.s===3){const e=w.erg;const tage=range(addDays(T,-6),T);
+    const mx='<div class="mx" role="table" aria-label="Tagesskala der Woche"><span></span>'+tage.map(k=>'<span class="h">'+WT[dow(k)]+'</span>').join('')+ITEMS.map(i=>'<span>'+esc(i.name.split(' ').pop())+'</span>'+tage.map(k=>{const d=peek(k);const v=d&&d.skala?d.skala[i.k]:null;return '<span class="c '+(v==null?'leer':istWarn(i.k,v)?'warn':'')+'">'+(v==null?'·':v)+'</span>';}).join('')).join('')+'</div>';
+    return '<div class="scr">'+kopf+'<h1 class="h1s">Ergebnis</h1><section class="ampel '+e.stufe+'"><div class="row"><span class="dot '+e.stufe+'"></span><span class="h2" style="font-size:22px">Ampel '+STUFE_NAME[e.stufe].toLowerCase()+'</span></div><p class="small">'+(e.gruende.length?e.gruende.map(esc).join('<br>'):'Kein Auslöser aktiv. Der Plan läuft weiter.')+'</p>'+(e.nah.length&&e.stufe==='gruen'?'<p class="xs">Nah an der Schwelle: '+e.nah.map(esc).join('; ')+'</p>':'')+
+    (e.stufe==='gelb'?'<p class="xs">Ab morgen: 10 Minuten erdende Variante, der Schwerpunkt bleibt.</p>':e.stufe==='rot'?'<p class="xs">Ab morgen: Selbstergründung pausiert, nur Erdung und Journal. Sprich diese Woche mit deinem Lehrer oder einer Kollegin.</p>':'')+'</section>'+
+    '<section class="card"><h2 class="lab">Tagesskala der Woche</h2><div style="overflow-x:auto">'+mx+'</div><p class="xs muted">Rosa: Wert zählt für die Ampel</p></section>'+
+    '<section class="card"><h2 class="lab">Wöchentliche Werte</h2><div class="list"><div class="li"><span>Selbst und Welt, Summe</span><span class="muted">'+e.cdsSum+' · Gelb ab 3, Rot ab 5</span></div><div class="li"><span>Gefühle beiseitegeschoben</span><span class="muted">'+ui.f.wi_bypass+' · Gelb ab 3</span></div><div class="li"><span>Überlegenheitsgefühl</span><span class="muted">'+ui.f.wi_ueber+' · Gelb ab 3</span></div><div class="li"><span>Frust über Zustände</span><span class="muted">'+ui.f.wi_frust+'</span></div></div></section>'+
+    '<button type="button" class="btn" data-a="wcWeiter">Weiter zu den Begründungen</button></div>';}
+  if(w.s===4){const m=w.muster;const wirk=w.wirkung;
+    const antwortDa=m.passung==='passt'||(m.passung==='pruefen'&&ui.f.antwort)||(m.passung==='aendern'&&ui.f.aend);
+    return '<div class="scr">'+kopf+'<h1 class="h1s">Begründungen</h1><div class="row wrap">'+passungChip(m.passung)+'<span class="chip">'+m.woche.length+' in 7 Tagen</span></div>'+
+    (wirk?'<section class="card"><strong>Deine Änderung vom '+fmtShort(wirk.woche)+'</strong><p class="small">„'+esc(wirk.text)+'“ hat '+(wirk.wirkung==='ja'?'gewirkt: weniger Begründungen als davor.':'nicht gewirkt: nicht weniger Begründungen. Wähl diesmal eine andere Änderung.')+'</p></section>':'')+
+    (m.woche.length?'<div class="list">'+m.woche.map(b=>'<div class="li" style="align-items:flex-start;padding-block:8px"><span class="small">'+fmtShort(b.tag)+' · '+esc(anlassText(b))+'<br><span class="soft">„'+esc(b.text)+'“</span></span>'+(b.stichwort?'<span class="chip pink">'+esc(b.stichwort)+'</span>':'')+'</div>').join('')+'</div>':'<p class="muted small">Keine Begründungen in dieser Woche.</p>')+
+    (m.muster.length?'<section class="card hl"><span class="chip pink" style="align-self:flex-start">Muster</span>'+m.muster.map(x=>'<p>'+esc(x.text)+'</p>').join('')+'<h2 class="h2">'+esc(m.muster[0].frage)+'</h2>'+
+      (m.passung==='pruefen'?seg('antwort',['anpassen','weiter','besprechen'],['Anpassen','Weiter so','Besprechen'],3):'')+(m.passung==='pruefen'&&ui.f.antwort==='besprechen'?'<p class="xs muted">Mit deinem Lehrer, einer Kollegin oder hier im Chat. Danach tippst du auf „Heute“ auf „Passung: besprechen“ und trägst in einem Satz ein, was herauskam.</p>':'')+
+      (m.passung==='pruefen'&&ui.f.antwort==='anpassen'||m.passung==='aendern'?'<p class="lab">'+(m.passung==='aendern'?'Das Ausweichen nimmt zu. Wähle eine konkrete Änderung:':'Welche Änderung?')+'</p><div class="col" style="gap:6px">'+AENDERUNGEN.filter(a=>a.id!=='zurueck'||S.phase!=='probe').map(a=>'<button type="button" class="segb '+(ui.f.aend===a.id?'on':'')+'" style="text-align:left;padding:10px 12px" aria-pressed="'+(ui.f.aend===a.id)+'" data-a="set" data-k="aend" data-v="'+esc(JSON.stringify(a.id))+'">'+esc(a.art)+': '+esc(a.text)+'</button>').join('')+'</div>':'')+
+      '<p class="xs muted">'+(m.passung==='aendern'?'Der Wochencheck schließt erst ab, wenn du eine Änderung gewählt hast.':'Hält das Muster nächste Woche an, verlangt der Wochencheck eine Änderung.')+'</p></section>':'')+
+    '<button type="button" class="btn" data-a="wcWeiter" '+(antwortDa&&(ui.f.antwort!=='anpassen'||ui.f.aend)?'':'disabled')+'>Weiter</button></div>';}
+  if(w.s===5){const b=w.bg;const s=bStufe();const k=bKat(s);
+    return '<div class="scr">'+kopf+'<h1 class="h1s">Begegnung</h1><div class="row wrap"><span class="chip purple">Kreis: '+esc(kreisNamen(s))+'</span><span class="chip">'+b.n+' Notiz'+(b.n===1?'':'en')+' in 7 Tagen</span>'+(b.fern?'<span class="chip pink">Kontakt ferner: '+b.fern+'×</span>':'')+'</div>'+
+    (b.proKat.length?'<section class="card"><table class="tbl"><thead><tr><td>Mit wem</td><td>Notizen</td><td>zeitweise+</td><td>zurück</td></tr></thead><tbody>'+b.proKat.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+x.n+'</td><td>'+x.gut+'</td><td>'+x.rueck+'×</td></tr>').join('')+'</tbody></table><p class="xs muted">Gezählt wird das Zurückkehren, nicht die Dauer.</p></section>':'<p class="small muted">Keine Begegnungsnotizen in dieser Woche.</p>')+
+    (b.top&&b.topN>=2?'<section class="card"><p class="small">„'+esc(b.top)+'“ zog dich '+b.topN+'× heraus.</p><p class="xs muted">'+(S.phase==='3'?'Nimm das in die Schattenarbeit dieser Woche mit.':'Die App merkt es sich für die Schattenarbeit im Schwerpunkt Integration.')+'</p></section>':'')+
+    (s>=5?'<p class="small">Der Kreis umfasst alle Felder.'+(S.runde>1?' Nächste Woche im Mittelpunkt: '+esc(bFokus(addDays(T,1)).name)+'.':'')+'</p>':
+     b.angebot?'<section class="card"><span class="eyebrow">Neues Feld</span><h2 class="h2">'+esc(BKAT[s].lang)+'</h2><p class="small">'+esc(BSTUFE[s].titel)+' '+esc(BSTUFE[s].text)+'</p>'+seg('stufeHoch',[true,false],['Dazunehmen','Beim Kreis bleiben'],2)+'<p class="xs muted">Beides ist gleich gut. Der Kreis wird größer, nicht höher.</p></section>':
+     b.hochOk&&!b.erlaubt?'<p class="small">'+esc(BKAT[s].lang)+' kommt mit dem Schwerpunkt '+esc(PHASEN[stufePhase(s+1)].name)+' dazu.</p>':
+     b.hochOk?'<p class="small muted">Bei gelber oder roter Ampel bleibt der Kreis, wie er ist.</p>':
+     '<p class="small muted">Ein neues Feld kommt infrage, wenn du im äußersten Feld mindestens 4 Begegnungen in 14 Tagen notiert hast und der Kontakt höchstens einmal ferner war. Bisher: '+b.z+'.</p>')+
+    '<div class="grow"></div><button type="button" class="btn" data-a="wcWeiter" '+(b.angebot&&ui.f.stufeHoch==null?'disabled':'')+'>Weiter</button></div>';}
+  if(w.s===6){const p=w.phase;
+    if(!p)return '<div class="scr">'+kopf+'<div class="col" style="gap:4px"><span class="eyebrow">Schwerpunkt</span><h1 class="h1s">Integration</h1></div><p>Integration hat kein Ende. Hier vertiefst du.</p><div class="grow"></div><button type="button" class="btn" data-a="wcWeiter">Weiter</button></div>';
+    const sv=S.phase==='probe'?stammVorschlag():null;
+    const pf=PASSFRAGE[S.phase];const nx=PHASEN[p.next];const angebot=p.ok&&(ui.f.krit===0||p.lang)&&w.erg.stufe==='gruen';
+    return '<div class="scr">'+kopf+'<div class="col" style="gap:4px"><span class="eyebrow">Schwerpunkt</span><h1 class="h1s">'+esc(PHASEN[S.phase].name)+'</h1></div><section class="card"><div class="list"><div class="li"><span>Seit</span><span class="small muted">'+seitTagen(phaseInfo().tag)+' · Wechsel frühestens nach '+minWochen()+' Wochen</span></div><div class="li"><span>Morgenanker</span><span class="small muted">an '+Math.round(p.quote*100)+' % der Tage · Wechsel ab 80 %</span></div>'+(S.phase!=='probe'?'<div class="li"><span>Ampel</span><span class="small muted">'+(p.gruen2?'zwei Wochen grün':'noch nicht zwei Wochen grün')+'</span></div>':'')+'</div></section>'+
+    (sv?'<section class="card"><strong>Vorschlag Stammfenster</strong><p class="small">'+sv.tage.map(t=>WT_LANG[t]).join(' und ')+', '+sv.zeit+' Uhr. Aus deinen ungestörten Probe-Sitzungen.</p><button type="button" class="btn sec small" data-a="stammUebernehmen">Übernehmen</button></section>':'')+
+    (pf?'<section class="card">'+qlab('krit',pf.frage)+seg('krit',[0,1,2],pf.opt,1)+'<p class="xs muted">Keine Antwort ist besser als eine andere. Die Frage klärt nur, welcher Schwerpunkt gerade passt.</p></section>':'')+
+    (w.erg.stufe!=='gruen'?'<p class="small muted">Bei gelber oder roter Ampel bleibt der Schwerpunkt.</p>':angebot?'<section class="card"><h2 class="h2">'+esc(nx.name)+' könnte jetzt passen.</h2><p class="small soft">'+esc(WECHSEL_TEXT[S.phase])+'</p>'+seg('wechsel',[true,false],['Wechseln','Bleiben'],2)+(p.lang&&ui.f.krit!==0?'<p class="xs muted">Du bist seit 8 Wochen in diesem Schwerpunkt. Weiterdrehen kann einen frischen Blick bringen.</p>':'')+'<p class="xs muted">Bleiben ist kein Zurückfallen.</p></section>':'')+
+    '<div class="grow"></div><button type="button" class="btn" data-a="wcWeiter" '+((pf&&ui.f.krit==null)||(angebot&&ui.f.wechsel==null)?'disabled':'')+'>Weiter</button></div>';}
+  const c=S.checks[weekStart(T)];
+  return '<div class="scr">'+kopf+'<h1 class="h1s">Wochencheck erledigt.</h1><div class="row wrap">'+ampelChip(c.ampel)+passungChip(c.passung)+'</div>'+(c.aenderung?'<p class="small">Änderung: '+esc(c.aenderung)+'</p>':'')+(c.wechsel?'<p class="small">Ab morgen Schwerpunkt: '+esc(PHASEN[S.phase].name)+'.</p>':'')+(c.begegnung&&c.begegnung.hoch?'<p class="small">Neu in deinem Kreis: '+esc(BKAT[c.begegnung.stufe-1].lang)+'.</p>':'')+'<p class="small muted">Die Ampel gilt ab morgen. Du kannst die Woche jetzt noch von Claude auswerten lassen.</p><div class="grow"></div><button type="button" class="btn" data-a="kiStart">KI-Auswertung vorbereiten</button><button type="button" class="btn sec" data-a="go" data-v="heute">Fertig</button></div>';};
+function wcWeiter(){const w=ui.wc;const T=w.T;
+  if(w.s===1){w.cds=[ui.f.cds0,ui.f.cds1];w.items={};WOCHENITEMS.forEach(x=>{w.items[x.k]=ui.f['wi_'+x.k];});w.s=w.offene.length?2:3;}
+  else if(w.s===2){const d=day(T);const at=hm(now());w.offene.forEach(o=>{d.begr.push({id:uid(),anlass:'woche_ausgelassen',uebung:o.id,text:(ui.f['wb_'+o.id]||'').trim(),stichwort:ui.f['ws_'+o.id]||null,at:at});});save();w.s=3;}
+  else if(w.s===3){w.muster=musterAuswerten(T);const offen=S.aenderungen.filter(a=>a.wirkung==='offen'&&diffDays(a.woche,T)>=14);w.wirkung=null;if(offen.length){const a=offen[offen.length-1];a.wirkung=w.muster.woche.length<a.basis?'ja':'nein';w.wirkung=a;save();}w.s=4;}
+  else if(w.s===4){w.antwort=ui.f.antwort||null;w.aend=ui.f.aend||null;w.bg=begAuswertung(T,w.erg.stufe);ui.f.stufeHoch=null;w.s=5;}
+  else if(w.s===5){w.stufeHoch=ui.f.stufeHoch===true;w.phase=phasePruefung(T,w.erg.stufe);ui.f.krit=null;ui.f.wechsel=null;w.s=6;}
+  else if(w.s===6){w.wechsel=ui.f.wechsel===true&&(ui.f.krit===0||!!(w.phase&&w.phase.lang));wcAbschluss();w.s=7;}
+  if(w.s===3&&!w.erg)w.erg=ampelWoche(T,w.cds,w.items);
+  const keep={cds0:ui.f.cds0,cds1:ui.f.cds1};WOCHENITEMS.forEach(x=>{keep['wi_'+x.k]=ui.f['wi_'+x.k];});
+  if(w.s>=3){ui.f=Object.assign({},keep,{antwort:ui.f.antwort,aend:ui.f.aend,krit:ui.f.krit,wechsel:ui.f.wechsel,stufeHoch:ui.f.stufeHoch});}
+  render();const a=document.getElementById('app');if(a)a.scrollTop=0;}
+function aenderungAnwenden(aid,T,basis){const a=AENDERUNGEN.find(x=>x.id===aid);if(!a)return null;const morgen=addDays(T,1);S.aenderungen.push({woche:T,id:a.id,text:a.text,wirkung:'offen',basis:basis});
+  if(a.id==='kuerzer')S.settings.hauptKurz=true;if(a.id==='morgen')S.settings.morgen=Math.min(8,S.settings.morgen+1);if(a.id==='impulse')S.settings.impulse=Math.max(0,S.settings.impulse-5);
+  if(a.id==='zurueck'&&S.phase!=='probe')wechsleZurueck(morgen);if(a.id==='fenster')setTimeout(()=>toast('Wähle dein neues Stammfenster in den Optionen.'),3800);return a.art+': '+a.text;}
+function wcAbschluss(){const w=ui.wc;const T=w.T;const m=w.muster;const e=w.erg;const morgen=addDays(T,1);
+  const bg=w.bg;let bHoch=false;if(bg){if(w.stufeHoch&&bg.angebot){S.begegnung.stufe=bStufe()+1;S.begegnung.stufeAb=T;bHoch=true;}S.begegnung.merk=S.begegnung.merk.filter(x=>x.woche!==T);if(bg.top&&bg.topN>=2)S.begegnung.merk.push({woche:T,ausloeser:bg.top,n:bg.topN});}
+  setAmpel(e.stufe,morgen,e.gruende.length?e.gruende[0]:'Kein Auslöser aktiv');
+  let aendText=null;if(w.aend)aendText=aenderungAnwenden(w.aend,T,m.woche.length);
+  if(w.wechsel&&w.phase&&w.phase.ok){const von=S.phase;S.phase=w.phase.next;S.phaseStart=morgen;if(S.phase==='1'&&!S.phase1Start)S.phase1Start=morgen;if(von==='3')S.runde=(S.runde||1)+1;}
+  S.checks[weekStart(T)]={datum:T,ampel:e.stufe,gruende:e.gruende,cds:w.cds,items:w.items,passung:m.passung,muster:m.muster.map(x=>x.text),antwort:w.antwort,aenderung:aendText,wechsel:!!(w.wechsel&&w.phase&&w.phase.ok),begegnung:bg?{n:bg.n,fern:bg.fern,stufe:S.begegnung.stufe,hoch:bHoch}:null};
+  save();}
+</script>
+<script>
+'use strict';
+/* ---------- KI ---------- */
+function namenErsetzen(t){const n=S.settings.namen.split(',').map(s=>s.trim()).filter(Boolean);n.forEach((x,i)=>{try{const re=new RegExp('(?<![\\p{L}])'+x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}])','giu');t=t.replace(re,'[Person '+(i+1)+']');}catch(e){}});return t;}
+function kiDaten(T){const from=addDays(T,-6);const L=[];
+  for(const k of range(from,T)){const d=peek(k);if(!d)continue;const p=[];
+    if(d.journal){const f=d.journal.fragen||fragen();if(d.journal.a)p.push('Morgen, „'+f[0]+'“: '+d.journal.a);if(d.journal.b)p.push('Morgen, „'+f[1]+'“: '+d.journal.b);if(d.journal.aud_a||d.journal.aud_b)p.push('(Sprachnotiz vorhanden, Transkript in der Testversion nicht verfügbar)');}
+    d.haupt.forEach(h=>{if(h.text)p.push(uebName(h.typ)+': '+h.text);});
+    (d.begeg||[]).forEach(b=>p.push('Begegnung '+b.at+' ('+bKatName(b.kat)+', gewahr: '+BGEW[b.gew]+', Rückkehren: '+bRueck(b.rueck)+', Kontakt: '+BKON[b.kon]+(b.aus?', herausgezogen durch: '+b.aus:'')+')'+(b.text?': '+b.text:'')));
+    d.notizen.forEach(x=>{if(x.text)p.push('Notiz '+x.at+': '+x.text);});
+    if(d.abend){if(d.abend.a)p.push('Abend, „Wo habe ich mich heute identifiziert?“: '+d.abend.a);if(d.abend.b)p.push('Abend, „Was blieb unberührt?“: '+d.abend.b);}
+    d.begr.forEach(b=>p.push('Begründung ('+ANLASS[b.anlass]+(b.stichwort?', '+b.stichwort:'')+'): '+b.text));
+    if(d.skala)p.push('Tagesskala 0–4: '+ITEMS.map(i=>i.name+' '+d.skala[i.k]).join(', '));
+    if(p.length)L.push('### '+fmtShort(k)+'\n'+p.join('\n'));}
+  const ck=S.checks[weekStart(T)];let kopf='';if(ck)kopf='Wochenwerte: Unwirklichkeit (2 Fragen, Summe 0–10) '+((ck.cds[0]||0)+(ck.cds[1]||0))+', Gefühle spirituell beiseitegeschoben '+ck.items.bypass+'/4, Überlegenheitsgefühl '+ck.items.ueber+'/4, Frust über ausbleibende Zustände '+ck.items.frust+'/4.\n\n';
+  let t=kopf+(L.join('\n\n')||'(Keine Einträge in dieser Woche.)');if(ui.ki&&ui.ki.ersetzen)t=namenErsetzen(t);return t;}
+function kiPrompt(daten){return 'Du unterstützt eine Person bei der Selbstbeobachtung ihrer Meditationspraxis. Sie geht einen nondualen Übungsweg mit Körper-Erkundung, Leere-Übung und Selbstergründung. Lies die Einträge einer Woche und suche nach Warnsignalen. Stelle keine Diagnosen.\n\nSignaltypen: depersonalisation, derealisation, bypassing, spirituelles_ego, zustands_frust, flucht, uebererregung.\n\nRegeln:\n- Unterscheide gewöhnliche Meditationserfahrungen wie Weite, Stille oder ein leiseres Ich-Gefühl von Warnmustern wie Taubheit, Unwirklichkeit mit Leidensdruck, Rückzug oder Gleichgültigkeit.\n- Jeder Befund braucht einen wörtlichen Beleg aus den Einträgen (höchstens 25 Wörter) und das Datum.\n- Benenne Unsicherheit. Lieber kein Befund als ein unsicherer.\n- Begründungen fürs Auslassen sind nur dann ein Befund, wenn sie selbst ein Warnsignal enthalten.\n- Begegnungsnotizen: Kontakt „ferner“ oder Beschreibungen wie „hinter Glas“ können auf Depersonalisation oder Bypassing hinweisen. Wenig Gewahrsein im Gespräch ist dagegen normal und kein Warnsignal.\n- Schreib auf Deutsch, in der Du-Form, sachlich und freundlich.\n\nAntworte nur mit JSON in dieser Form:\n{"befunde":[{"signal":"zustands_frust","beleg":"…","datum":"Fr 2.10.","sicherheit":"niedrig|mittel|hoch","einordnung":"ein bis zwei Sätze"}],"zusammenfassung":"ein Satz dazu, was sich in dieser Woche nicht als Warnsignal zeigt"}\nWenn nichts auffällt, ist "befunde" eine leere Liste.\n\nEinträge der Woche:\n\n'+daten;}
+function kiParse(t){try{const s=t.indexOf('{'),e=t.lastIndexOf('}');if(s<0||e<s)return null;const o=JSON.parse(t.slice(s,e+1));if(!Array.isArray(o.befunde))return null;return o;}catch(e){return null;}}
+V.ki=()=>{const k=ui.ki||(ui.ki={ersetzen:true,status:'idle',erg:null,fehler:''});const T=today();const daten=kiDaten(T);const hatNamen=!!S.settings.namen.trim();
+  let unten='';
+  if(k.status==='laeuft')unten='<section class="card"><p class="status"><span class="dot" style="background:var(--pink)"></span>Claude denkt nach. Das dauert meist unter einer Minute.</p><button type="button" class="btn sec small" data-a="kiStop">Stopp</button></section>';
+  else if(k.erg){unten='<h2 class="h2">'+(k.erg.befunde.length?k.erg.befunde.length===1?'Ein Befund':k.erg.befunde.length+' Befunde':'Keine Befunde')+'</h2><p class="small muted">Keine Diagnose. Du entscheidest, ob ein Befund zählt.</p>'+
+    k.erg.befunde.map((b,i)=>'<article class="card"><div class="row between"><span class="chip pink">'+esc(SIGNAL[b.signal]||b.signal)+'</span><span class="xs muted">Sicherheit: '+esc(b.sicherheit||'–')+'</span></div><blockquote class="quote">„'+esc(b.beleg)+'“</blockquote><span class="xs muted">'+esc(b.datum||'')+'</span><p class="small">'+esc(b.einordnung||'')+'</p>'+
+      (b._st?'<p class="small chip '+(b._st==='ja'?'warn':'')+'" role="status">'+(b._st==='ja'?'Bestätigt. Ab morgen Ampel mindestens gelb.':'Verworfen. Bleibt im Protokoll.')+'</p>':'<div class="btnrow"><button type="button" class="btn small" data-a="kiJa" data-v="'+i+'">Bestätigen</button><button type="button" class="btn sec small" data-a="kiNein" data-v="'+i+'">Verwerfen</button></div>')+'</article>').join('')+
+    (k.erg.zusammenfassung?'<p class="small">'+esc(k.erg.zusammenfassung)+'</p>':'')+'<button type="button" class="btn sec" data-a="go" data-v="check">Fertig</button>';}
+  else unten=(SAMPLE?'<button type="button" class="btn" data-a="kiSenden">Mit Claude auswerten</button><p class="xs muted">Läuft über dein Claude-Konto und zählt zu deiner Nutzung.</p>':'<p class="small muted">Die direkte Auswertung ist in dieser Ansicht nicht verfügbar. Kopier den Auftrag in einen Chat und füge die Antwort unten ein.</p>')+
+    '<button type="button" class="btn sec" data-a="kiKopie">Als Text kopieren</button>'+feld('kiPaste','Antwort einfügen',0,{mic:false,ph:'Die JSON-Antwort aus dem Chat hier einfügen'})+'<button type="button" class="btn sec small" data-a="kiEinlesen">Antwort einlesen</button>'+(k.fehler?'<p class="small" style="color:var(--crit)">'+esc(k.fehler)+'</p>':'');
+  return '<div class="scr"><div class="row between"><button type="button" class="link" data-a="go" data-v="check">Zurück</button><span class="small muted">'+fmtShort(addDays(T,-6))+'–'+fmtShort(T)+'</span></div><div class="col" style="gap:6px"><h1 class="h1s">KI-Auswertung</h1><p class="small muted">Erst nach deinem Tippen. Genau dieser Text, nichts sonst.</p></div>'+
+  '<pre class="pre" tabindex="0" aria-label="Vorschau des Texts">'+esc(daten)+'</pre>'+
+  (hatNamen?'<label class="tog"><input type="checkbox" '+(k.ersetzen?'checked':'')+' data-a="kiErsetzen"> Namen durch Platzhalter ersetzen</label>':'<p class="xs muted">Tipp: Trag in den Einstellungen Namen ein, dann ersetzt die App sie vor dem Senden.</p>')+unten+'</div>';};
+let KICTL=null;
+async function kiSenden(){const k=ui.ki;if(!SAMPLE)return;k.status='laeuft';k.fehler='';render();KICTL=new AbortController();
+  try{const o=await SAMPLE.json(kiPrompt(kiDaten(today())),{modelTier:'complex',signal:KICTL.signal,cache:false});if(!o||!Array.isArray(o.befunde))throw{code:'invalid_json'};k.erg=o;k.status='fertig';}
+  catch(e){k.status='idle';const c=e&&e.code;k.fehler=c==='cancelled'?'':c==='not_granted'||c==='sampling_disabled'?'Die Auswertung wurde nicht erlaubt. Nutze den Weg über den Chat.':c==='rate_limited'?'Gerade zu viele Anfragen. Versuch es später noch einmal.':c==='invalid_json'?'Die Antwort war kein gültiges JSON. Versuch es noch einmal.':'Die Auswertung ist fehlgeschlagen. Versuch es später noch einmal.';if(c==='not_granted'||c==='sampling_disabled')SAMPLE=null;}
+  render();}
+function kiEntscheid(i,ja){const k=ui.ki;const b=k.erg.befunde[i];b._st=ja?'ja':'nein';S.flags.push({id:uid(),signal:b.signal,beleg:b.beleg,datum:b.datum,sicherheit:b.sicherheit,einordnung:b.einordnung,status:ja?'bestaetigt':'verworfen',am:today()});
+  if(ja&&erhoeheAmpel('gelb','Bestätigter KI-Befund: '+(SIGNAL[b.signal]||b.signal)))toast('Ab morgen Ampel gelb.');save();render();}
+
+/* ---------- Export ---------- */
+function mdTag(k){const d=S.days[k];const L=['---','datum: '+k,'phase: '+(d.phase||''),'ampel: '+ampelAm(k).stufe,d.skala?'skala: {koerper: '+d.skala.k+', wirklichkeit: '+d.skala.w+', gefuehle: '+d.skala.g+', schlaf: '+d.skala.s+', unruhe: '+d.skala.u+'}':'skala: null','notausgang: '+!!d.notausgang,'---'];
+  if(d.anker)L.push('','Morgenanker '+d.anker.at+', '+d.anker.min+' Min.');
+  if(d.journal){L.push('','## Morgen');(d.journal.fragen||fragen()).forEach((f,i)=>{const key=i?'b':'a';L.push('**'+f+'**');if(d.journal[key])L.push(d.journal[key]);if(d.journal['aud_'+key])L.push('_Sprachnotiz '+mss(d.journal['aud_'+key])+'_');L.push('');});}
+  if(d.haupt.length){L.push('## Übungen');d.haupt.forEach(h=>L.push('- '+h.at+' · '+uebName(h.typ)+' · '+h.min+' Min.'+(h.qualitaet!=null?' · Qualität '+h.qualitaet:'')+(h.gestoert?' · gestört':'')+(h.text?'\n  '+h.text:'')));L.push('');}
+  if(d.begeg&&d.begeg.length){L.push('## Begegnungen');d.begeg.forEach(b=>L.push('- '+b.at+' · '+bKatName(b.kat)+' · gewahr '+BGEW[b.gew]+' · '+bRueck(b.rueck)+'× zurück · Kontakt '+BKON[b.kon]+(b.aus?' · '+b.aus:'')+(b.aud?' _(Sprachnotiz '+mss(b.aud)+')_':'')+(b.text?'\n  '+b.text:'')));L.push('');}
+  if(d.schwellen&&d.schwellen.length)L.push('Schwellen-Anker: '+d.schwellen.map(x=>x.at+' '+(x.name||'')).join(', '),'');
+  if(d.notizen.length){L.push('## Notizen');d.notizen.forEach(x=>L.push('- '+x.at+' '+x.text+(x.aud?' _(Sprachnotiz '+mss(x.aud)+')_':'')));L.push('');}
+  if(d.abend){L.push('## Abend','**Wo habe ich mich heute identifiziert?**',d.abend.a||'','','**Was blieb unberührt?**',d.abend.b||'','');}
+  if(d.begr.length){L.push('## Begründungen');d.begr.forEach(b=>L.push('- '+b.at+' · '+anlassText(b)+' · „'+b.text+'“'+(b.stichwort?' · '+b.stichwort:'')));L.push('');}
+  if(d.impulse&&d.impulse.n)L.push('## Tagesimpulse','bemerkt: '+d.impulse.b+' von '+d.impulse.n);
+  if(d.bimp&&d.bimp.n)L.push('Stiller Impuls: '+d.bimp.b+' von '+d.bimp.n+' bemerkt');
+  return L.join('\n');}
+async function speichereDatei(name,data){if(NATIVE){toast(nat('speichere',name,data)?'Gespeichert in Downloads/Punkt: '+name:'Speichern ist fehlgeschlagen.');return;}if(DOWNLOADS){try{await DOWNLOADS.save({filename:name,data:data});toast('Gespeichert: '+name);return;}catch(e){if(e&&e.code==='declined')return;}}
+  try{await kopiere(data);toast('Speichern ist hier nicht möglich. Der Inhalt liegt in der Zwischenablage.');}catch(e){toast('Speichern und Kopieren sind in dieser Ansicht nicht möglich.');}}
+
+/* ---------- Modals ---------- */
+function renderOverlay(){const o=document.getElementById('overlay');const m=ui.modal||(S.pending?{typ:'begr',anlass:S.pending.anlass,then:'gateAus'}:null);if(!m){o.innerHTML='';return;}
+  if(m.typ==='begr'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mb-t"><span class="eyebrow">'+esc(ANLASS[m.anlass])+'</span><h2 class="h2" id="mb-t">'+esc(ANLASS_FRAGE[m.anlass])+'</h2>'+feld('mb','Ein Satz, mindestens 20 Zeichen',20,{mic:false})+'<p class="lab">Stichwort <span class="muted" style="font-weight:400">· optional</span></p>'+stichChips('mbStich')+'<button type="button" class="btn" data-a="mbOk" data-ready="mb">Speichern</button>'+(m.then==='gateAus'?'':'<button type="button" class="link quiet" data-a="modalZu">Abbrechen</button>')+'</div></div>';}
+  else if(m.typ==='notiz'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mn-t"><h2 class="h2" id="mn-t">Schnellnotiz</h2>'+feld('mn','Was ist gerade da?',0)+'<div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Abbrechen</button><button type="button" class="btn" data-a="notizOk">Speichern</button></div></div></div>';}
+  else if(m.typ==='scheitern'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ms-t"><h2 class="h2" id="ms-t">Scheitern riskiert</h2><p class="small muted">Etwas Ungeübtes vor anderen, oder zu Hause einen Fehler zugegeben, ohne ihn zu erklären.</p>'+feld('ms','Was hast du riskiert, und wem ist es geschehen?',0)+'<div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Abbrechen</button><button type="button" class="btn" data-a="scheiternOk">Speichern</button></div></div></div>';}
+  else if(m.typ==='confirm'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mc-t"><h2 class="h2" id="mc-t">'+esc(m.titel)+'</h2><p class="soft">'+esc(m.text)+'</p><div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Abbrechen</button><button type="button" class="btn pink" data-a="confirmOk">'+esc(m.ok)+'</button></div></div></div>';}
+  else if(m.typ==='schwelle'){const t=ui.f.swTyp;o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mw-t"><h2 class="h2" id="mw-t">Neue Schwelle</h2><label class="lab" for="f-swName">Übergang</label><input type="text" id="f-swName" data-f="swName" data-min="2" value="'+esc(ui.f.swName||'')+'" placeholder="zum Beispiel Teamsitzung">'+
+    '<p class="lab">Auslöser</p>'+seg('swTyp',['zeit','nfc','ort'],['Uhrzeit','NFC','Ort'],3)+
+    (t==='zeit'?'<label class="small muted" for="f-swZeit">Uhrzeit, Mo–Fr</label><input type="time" id="f-swZeit" data-f="swZeit" data-min="5" value="'+esc(ui.f.swZeit||'')+'">':'<label class="small muted" for="f-swOrt">'+(t==='nfc'?'Wo klebt der Aufkleber?':'Welcher Ort?')+'</label><input type="text" id="f-swOrt" data-f="swOrt" data-min="0" value="'+esc(ui.f.swOrt||'')+'" placeholder="'+(t==='nfc'?'zum Beispiel Bürotür':'zum Beispiel Parkplatz an der Arbeit')+'">')+
+    '<p class="xs muted">'+(t==='zeit'?'Das Handy erinnert zwei Minuten vorher.':t==='nfc'?'Das Handy an den Aufkleber halten startet den Anker.':'Die Erinnerung kommt bei der Ankunft. Der Standort bleibt auf dem Gerät.')+'</p>'+
+    '<div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Abbrechen</button><button type="button" class="btn" data-a="swOk" data-ready="'+(t==='zeit'?'swName,swZeit':'swName')+'">Speichern</button></div></div></div>';}
+  else if(m.typ==='swHinweis'){const x=S.begegnung.schwellen.find(y=>y.id===m.id);if(!x){ui.modal=null;o.innerHTML='';return;}o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mh-t"><span class="eyebrow">Schwelle · '+esc(swInfo(x))+'</span><h2 class="h2" id="mh-t">'+esc(x.name)+'</h2><p class="soft">30 Sekunden, bevor es losgeht: Atemzug, Blick, Füße.</p><div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Jetzt nicht</button><button type="button" class="btn" data-a="swAnker" data-v="'+esc(x.id)+'">Anker starten</button></div><p class="xs muted">Schwellen sind Einladungen. Auslassen braucht keine Begründung.</p></div></div>';}
+  else if(m.typ==='bimpuls'){const rot=ampelAm().stufe==='rot';o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mi-t"><div class="row between"><span class="eyebrow">Stiller Impuls · '+hm(now())+'</span><span class="vib" aria-hidden="true"><i style="width:10px"></i><i style="width:10px"></i><i style="width:26px"></i></span></div><h2 class="h2" id="mi-t">'+(rot?'Füße.':'Wer schaut gerade?')+'</h2><p class="soft small">Auf dem Handy kommt nur die Vibration: kurz, kurz, lang. Du schaust nicht hin. Das Bemerken selbst ist die Übung.</p><div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Schließen</button><button type="button" class="btn" data-a="bImpulsJa">Bemerkt</button></div></div></div>';}
+  else if(m.typ==='besprechen'){const c=letzterCheck();const mu=(c&&c.muster)||[];const opts=AENDERUNGEN.filter(a=>a.id!=='zurueck'||S.phase!=='probe');o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mp-t"><span class="eyebrow">Passung · Wochencheck '+(c?fmtShort(c.datum):'')+'</span><h2 class="h2" id="mp-t">Besprechen</h2>'+(mu.length?'<div class="list">'+mu.map(x=>'<div class="li small">'+esc(x)+'</div>').join('')+'</div>':'')+'<p class="small muted">Mit deinem Lehrer, einer Kollegin oder hier im Chat. Danach ein Satz dazu, was herauskam.</p><button type="button" class="btn sec small" data-a="bsKopie">Muster und Begründungen kopieren</button>'+feld('bs','Mit wem, und was kam heraus?',20)+'<p class="lab">Ergibt sich eine Änderung?</p>'+seg('bsAend',['keine'].concat(opts.map(a=>a.id)),['Keine'].concat(opts.map(a=>a.art+': '+a.text)),1)+'<div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Später</button><button type="button" class="btn" data-a="bsOk" data-ready="bs">Geklärt</button></div></div></div>';}
+  else if(m.typ==='impuls'){const t=ANKERFRAGE[S.phase];o.innerHTML='<div class="full"><div class="scr" style="height:100%"><div class="row between small muted"><span class="row" style="gap:8px"><span class="dot" style="background:var(--pink)"></span>Tagesimpuls · '+hm(now())+'</span><span>'+esc(PHASEN[S.phase].kurz)+'</span></div><div class="grow col" style="justify-content:center;gap:18px"><h1 class="h1" style="font-size:'+(t[0].length>20?44:54)+'px">'+esc(t[0])+'</h1><p class="lead">'+esc(t[1])+'</p></div>'+
+    (m.bemerkt?'<p class="card" role="status">Notiert. Das Gewahrsein war schon da, bevor du getippt hast.</p><button type="button" class="btn" data-a="modalZu">Zurück</button>':'<button type="button" class="btn" data-a="impulsJa">Bemerkt</button><button type="button" class="btn sec" data-a="modalZu">Schließen</button>')+'</div></div>';}
+  live();}
+
+/* ---------- Render ---------- */
+function applyTheme(){const t=S.settings.theme,r=document.documentElement;r.classList.toggle('testmodus',!!S.settings.testmodus);if(t==='hell')r.dataset.theme='light';else if(t==='dunkel')r.dataset.theme='dark';else if(NATIVE){const d=nat('dunkel');if(d===true)r.dataset.theme='dark';else if(d===false)r.dataset.theme='light';else delete r.dataset.theme;}else delete r.dataset.theme;}
+function render(){applyTheme();const app=document.getElementById('app');let r=ui.route;if(r==='auto'){r=autoRoute();ui.route=r;}const fn=V[r]||V.heute;app.innerHTML=fn();renderOverlay();live();renderPanel();}
+function renderPanel(){const n=now();const c=document.getElementById('p-clock');if(c)c.textContent=WT[dow(keyOf(n))]+', '+n.getDate()+'. '+MON[n.getMonth()]+' · '+hm(n);
+  const f=document.getElementById('p-face');if(f)f.checked=!!S.sim.faceDown;const dm=document.getElementById('p-demo');if(dm)dm.checked=!!S.settings.demo;
+  const ph=document.getElementById('p-phase');if(ph&&document.activeElement!==ph)ph.value=S.phase;
+  const pr=document.getElementById('p-runde');if(pr)pr.textContent=S.runde>1?'Erster Durchgang: abgeschlossen':'Erster Durchgang: läuft';
+  const ps=document.getElementById('p-store');if(ps)ps.textContent=STORE==='Konto'?'Konto':'Browser';
+  const st=document.getElementById('p-status');if(st){const a=ampelAm();st.innerHTML='<dt>Screen</dt><dd>'+esc(ui.route)+'</dd><dt>Gate</dt><dd>'+(gateAktiv()?'aktiv':'frei')+'</dd><dt>Schwerpunkt</dt><dd>'+esc(PHASEN[S.phase].name)+'</dd><dt>Ampel</dt><dd>'+STUFE_NAME[a.stufe]+'</dd><dt>Passung</dt><dd>'+esc(passungAktuell())+'</dd><dt>Leere</dt><dd>'+leereMin()+' Min.</dd><dt>Kreis</dt><dd>'+bStufe()+' von 5 Feldern</dd><dt>Durchgang</dt><dd>'+(S.runde>1?'Spirale':'erster')+'</dd><dt>Speicher</dt><dd>'+(STORE==='Konto'?'Claude-Konto':'Browser')+'</dd>';}}
+let toastT=null;function toast(t){const el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},3600);}
+</script>
+<script>
+'use strict';
+/* ---------- Aktionen ---------- */
+function setZeit(d){S.sim.offset=d.getTime()-Date.now();save();const r=ui.route;if(['heute','gate','tagebuch','check','einst','zeit'].includes(r))go('auto');else render();}
+function beispielwoche(){S=mergeState(Object.assign(defaultState(),{settings:S.settings,sim:S.sim}));
+  {const n=now();const d=new Date(n);d.setDate(d.getDate()+(6-dow(keyOf(n))));d.setHours(19,0,0,0);S.sim.offset=(d<n?n:d).getTime()-Date.now();}
+  const T=today();
+  S.created=addDays(T,-22);S.phase='1';S.phaseStart=addDays(T,-8);S.phase1Start=addDays(T,-8);S.settings.stamm={tage:[1,3],zeit:'12:30'};
+  const A=['Beim Zeigen auf mein Gesicht fand ich kein Gesicht. Nur Farbe, Raum, das Zimmer. Der Gedanke „da bin ich“ kam erst danach.','Die Hände von innen: Kribbeln ohne Rand. Ich suchte die Stelle, wo das Bemerken sitzt, und fand keine.','Wieder nichts. Gestern war die Weite da, heute nur Gedanken und Planungen für die Visite.','Kurz war da Stille, ganz gewöhnlich, beim Wasserkocher. Kein Sonderzustand, nur Gewahrsein.','Unruhe im Bauch, weil der Tag voll ist. Die Unruhe erschien, aber das, worin sie erschien, war ruhig.','Ich merke, dass ich suche. Das Suchen selbst ist auch nur etwas, das gesehen wird.'];
+  const B=['Ja, als der Kleine rief. Seine Stimme war einfach Klang, kein Abstand.','Ein Moment am Fenster, ohne dass ich etwas wollte.','Eher nicht. Viel Denken über gestern.','Beim Zähneputzen. Nichts Besonderes, und gerade das.','Nein, zu müde für irgendetwas.','Ja, im Auto an der Ampel.'];
+  const SK=[[3,3,2,2,1],[3,4,3,1,2],[2,3,2,3,1],[3,3,2,2,2],[3,3,3,2,1],[4,3,3,1,1],[3,4,2,3,0]];
+  for(let i=7;i>=1;i--){const k=addDays(T,-i);const j=7-i;const d=S.days[k]=Object.assign(freshDay(),{phase:'1'});const sk=SK[j];d.skala={k:sk[0],w:sk[1],g:sk[2],s:sk[3],u:sk[4]};
+    if(j===3){d.notausgang={text:'Kind war um fünf wach, ich will jetzt einfach meine Ruhe.',stichwort:'müde',at:'05:40'};d.frei=true;d.skala=null;d.begr.push({id:uid(),anlass:'notausgang',text:d.notausgang.text,stichwort:'müde',at:'05:40'});}
+    else{d.anker={min:7,variante:'gruen',at:'05:'+pad(10+j*3)};d.journal={a:A[j%A.length],b:B[j%B.length],fragen:FRAGEN['1'],at:'05:25'};d.frei=true;}
+    if(j===1||j===5)d.haupt.push({typ:'haupt',min:20,at:'12:30',ort:'arbeit',qualitaet:3,gestoert:false,text:j===1?'Die Grenze der Hände war nicht zu finden, nur Empfinden.':'Leere zwei Minuten, Langeweile saß im Kiefer.'});
+    if(j===5)d.haupt.push({typ:'harding',min:10,at:'16:10',ort:'allein',text:'Zeigen nach innen: Dort, wo „ich“ sein sollte, war nur offener Raum mit dem Zimmer darin.'});
+    if(j===2)d.begr.push({id:uid(),anlass:'haupt_ausgelassen',uebung:'haupt',text:'Nach der Teamsitzung direkt in die nächste Stunde, kein Luftloch.',stichwort:'keine Zeit',at:'14:40'});
+    if(j===4)d.begr.push({id:uid(),anlass:'haupt_ausgelassen',uebung:'haupt',text:'Mittagspause für ein Aufnahmegespräch hergegeben.',stichwort:'keine Zeit',at:'14:10'});
+    if(j%2===0)d.abend={a:'Beim Abendessen, als es laut wurde. Ich war ganz im Ärger.',b:'Das Hören selbst. Es war einfach da.'};
+    d.impulse={n:14,b:5+j};
+    const BN=[['08:10','fremd',2,1,'naeher',null,'Beim Bäcker: Ihr Gesicht dort, hier keins. Das Lächeln war im selben Raum wie der Duft.'],['10:40','arbeit',1,1,'gleich','Inhalt','Teamsitzung. Nach zwei Minuten ganz im Fall, einmal kurz zurück.'],['17:20','fremd',2,2,'naeher',null,'An der Kasse zweimal bemerkt, dass ich weg war.'],['07:05','familie',0,0,'ferner','Konflikt','Streit beim Frühstück. Ich war nur Verteidigung, danach wie hinter Glas.'],['12:10','fremd',1,1,'gleich','Inhalt',''],['14:30','arbeit',2,3,'gleich','Wie ich wirke','Vorstellung in der Runde. Dreimal zurück, jedes Mal über die Füße.'],['11:15','fremd',3,2,'naeher',null,'Im Bus: Der Mann gegenüber erschien einfach, ohne Abstand. Das kurze Gespräch war leicht.']][j];
+    d.begeg.push({id:uid(),at:BN[0],kat:BN[1],gew:BN[2],rueck:BN[3],kon:BN[4],aus:BN[5],text:BN[6],aud:0,stufe:1});
+    if(j===1||j===2||j===5)d.schwellen.push({id:'sw1',name:'Vor der ersten Therapiestunde',at:'08:5'+(j+1)});
+    d.bimp={n:4,b:[1,2,1,0,2,3,2][j]};}
+  const alt=[[-10,'Kinder','Beide krank zu Hause, kein Fenster.'],[-12,'krank','Erkältet, habe nur den Anker gemacht.'],[-16,'anderes','Elternabend im Waldkindergarten.'],[-22,'Kinder','Der Große brauchte mich beim Lernen.'],[-25,'krank','Kopfschmerzen, keine Hauptpraxis.'],[-26,'anderes','Tischtennis-Punktspiel am Abend.']];
+  alt.forEach(a=>{const k=addDays(T,a[0]);const d=S.days[k]||(S.days[k]=Object.assign(freshDay(),{phase:a[0]<-8?'probe':'1',anker:{min:7,variante:'gruen',at:'05:20'},frei:true}));d.begr.push({id:uid(),anlass:'haupt_ausgelassen',uebung:'haupt',text:a[2],stichwort:a[1],at:'15:00'});});
+  {const d=S.days[T]=Object.assign(freshDay(),{phase:'1'});d.anker={min:7,variante:'gruen',at:'05:20'};d.journal={a:A[1],b:B[3],fragen:FRAGEN['1'],at:'05:30'};d.skala={k:3,w:3,g:3,s:2,u:1};d.frei=true;d.impulse={n:14,b:4};d.begeg.push({id:uid(),at:'18:20',kat:'familie',gew:1,rueck:2,kon:'naeher',aus:'Nähe',text:'Beim Vorlesen zweimal gemerkt, dass ich plane. Zurück zur Stimme.',aud:0,stufe:1});d.bimp={n:2,b:1};}
+  S.begegnung.stufe=1;S.begegnung.stufeAb=null;
+  save();toast('Beispielwoche geladen: Sonntag, 19 Uhr, Schwerpunkt Erkennen. Drei Begründungen, sieben Begegnungen, der Wochencheck wartet.');go('auto');}
+function nachstMorgen(){const n=now();const d=new Date(n);d.setHours(S.settings.morgen,0,0,0);if(d<=n)d.setDate(d.getDate()+1);return d;}
+const A={
+  go:el=>{const v=el.dataset.v;if(v==='journal'||v==='skala')go(v);else go(v);},
+  beginnen:()=>{const T=today();S.created=T;S.phase='probe';S.phaseStart=T;save();go('auto');},
+  ankerStart:()=>startSession('anker','gate'),
+  telefon:()=>{if(NATIVE&&nat('telefon'))return;toast('Telefon, Uhr und Notruf sind immer frei.');},
+  sesWeiter:()=>sesWeiter(),
+  warmSkip:()=>{if(SES){SES.warm=0;SES.warmEl=0;SES.last=Date.now();render();}},
+  gateEinst:()=>{nat('gateEinstellungen');},
+  testmodus:()=>{S.settings.testmodus=!S.settings.testmodus;save();render();},
+  theme:el=>{S.settings.theme=el.dataset.v;save();render();},
+  leereGenug:()=>{SES.elapsed=stepDur(SES.plan[SES.i]);sesWeiter();},
+  sesAbbruch:()=>{const typ=SES&&SES.typ;SES=null;schlaf();go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
+  bnotiz:()=>{ui.bnZurueck=['heute','abend'].includes(ui.route)?ui.route:'begegnung';ui.modal=null;go('bnotiz');},
+  bnotizOk:()=>{stopRec();const f=ui.f;const T=today();const d=day();const e={id:uid(),at:hm(now()),kat:f.bKat,gew:f.bGew,rueck:f.bRueck,kon:f.bKon,aus:f.bAus||null,text:(f.bt||'').trim(),aud:f.aud_bt||0,stufe:bStufe()};d.begeg.push(e);
+    let msg=e.rueck>0?bRueck(e.rueck)+'× zurückgekehrt. Genau das ist die Übung.':'Notiert. Es jetzt zu bemerken, ist auch eine Rückkehr.';
+    if(e.kon==='ferner'){const n=bFern(T);if(n>=3&&erhoeheAmpel('gelb','Kontakt in Begegnungen '+n+'× ferner in 7 Tagen'))msg='Ab morgen Ampel gelb: Kontakt '+n+'× ferner in 7 Tagen.';}
+    const back=ui.bnZurueck||'begegnung';ui.bnZurueck=null;save();go(back);toast(msg);},
+  swAnker:el=>{const id=el.dataset.v;const x=S.begegnung.schwellen.find(y=>y.id===id);ui.modal=null;renderOverlay();startSession('schwelle','begegnung',{schwelleId:x?x.id:null,titel:x?x.name:'Anker vor einer Begegnung'});},
+  swNeu:()=>{ui.modal={typ:'schwelle'};ui.f={swTyp:'zeit',swZeit:'08:55'};renderOverlay();},
+  swOk:()=>{const f=ui.f;S.begegnung.schwellen.push({id:uid(),name:(f.swName||'').trim(),typ:f.swTyp,zeit:f.swTyp==='zeit'?f.swZeit:null,ort:f.swTyp!=='zeit'?(f.swOrt||'').trim():null});ui.modal=null;ui.f={};save();render();toast('Schwelle gespeichert.');},
+  swWeg:el=>{S.begegnung.schwellen=S.begegnung.schwellen.filter(x=>x.id!==el.dataset.v);save();render();},
+  bImpulsJa:()=>{const d=day();d.bimp.b++;save();ui.modal=null;render();toast('Bemerkt. Weiter im Gespräch.');},
+  bStufeZurueck:()=>{ui.lockern=()=>{S.begegnung.stufe=Math.max(1,bStufe()-1);S.begegnung.stufeAb=today();};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();},
+  begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const wd=document.getElementById('pacer-word');atemSignal(wd&&wd.textContent?wd.textContent:'ein');},
+  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};}rerender();},
+  audioWeg:el=>{ui.f['aud_'+el.dataset.v]=0;rerender();},
+  set:el=>{ui.f[el.dataset.k]=JSON.parse(el.dataset.v);rerender();},
+  stich:el=>{const k=el.dataset.k;ui.f[k]=ui.f[k]===el.dataset.v?null:el.dataset.v;rerender();},
+  journalOk:()=>{stopRec();const d=day();d.journal={a:(ui.f.a||'').trim(),b:(ui.f.b||'').trim(),aud_a:ui.f.aud_a||0,aud_b:ui.f.aud_b||0,fragen:fragen(),at:hm(now())};save();go('skala');},
+  skalaOk:()=>{const d=day();d.skala={};ITEMS.forEach(i=>{d.skala[i.k]=ui.f['sk_'+i.k];});d.frei=true;
+    const T=today(),from=addDays(T,-6),warn={k:0,w:0,g:0,s:0,u:0};for(const k of range(from,T)){const x=peek(k);if(x&&x.skala)for(const y of Object.keys(warn))if(istWarn(y,x.skala[y]))warn[y]++;}
+    let msg='Frei für heute.';if(warn.w>=5&&erhoeheAmpel('rot',haeufText('w',warn.w)))msg='Ab morgen Ampel rot: '+haeufText('w',warn.w)+'.';
+    else{for(const y of Object.keys(warn)){if(warn[y]>=3&&erhoeheAmpel('gelb',haeufText(y,warn[y]))){msg='Ab morgen Ampel gelb: '+haeufText(y,warn[y])+'.';break;}}}
+    save();go('heute');toast(msg);},
+  notausOk:()=>{const d=day();const at=hm(now());const t=(ui.f.na||'').trim();d.notausgang={text:t,stichwort:ui.f.naStich||null,at:at};d.frei=true;d.begr.push({id:uid(),anlass:'notausgang',text:t,stichwort:ui.f.naStich||null,at:at});save();go('frei');},
+  uebung:el=>{const id=el.dataset.v;if(id==='schatten'){A.schattenStart();return;}startSession(id,el.dataset.ctx||'heute');},
+  empfStart:el=>{const id=el.dataset.v;if(id==='schatten'){A.schattenStart();return;}startSession(id,'zeit');},
+  zeitSet:el=>{const k=el.dataset.k;ui.zeit[k]=k==='t'?Number(el.dataset.v):el.dataset.v;render();},
+  nachOk:()=>{stopRec();const n=ui.nach;const e={typ:n.typ,min:n.min,at:n.at,ort:ui.f.ort||n.ort||null,text:(ui.f.nt||'').trim(),empfohlen:!!n.empfohlen};if(S.phase==='probe'&&n.typ==='haupt'){e.gestoert=ui.f.gestoert;e.qualitaet=ui.f.qual;}day().haupt.push(e);ui.nach=null;save();go('heute');toast('Gespeichert.');},
+  stammSkip:()=>{ui.modal={typ:'begr',anlass:'haupt_ausgelassen',uebung:'haupt',then:'stammSkip'};ui.f={};renderOverlay();},
+  mbOk:()=>{const m=ui.modal||{typ:'begr',anlass:S.pending.anlass,then:'gateAus'};const d=day();d.begr.push({id:uid(),anlass:m.anlass,uebung:m.uebung||null,text:(ui.f.mb||'').trim(),stichwort:ui.f.mbStich||null,at:hm(now())});
+    if(m.then==='stammSkip')d.stammSkip=true;if(m.then==='gateAus')S.pending=null;if(m.then==='lockern'&&ui.lockern){ui.lockern();ui.lockern=null;}
+    ui.modal=null;ui.f={};save();render();toast('Begründung gespeichert.');},
+  besprechen:()=>{ui.modal={typ:'besprechen'};ui.f={bsAend:'keine'};renderOverlay();},
+  bsKopie:()=>{const c=letzterCheck();if(!c)return;const L=['Wochencheck '+fmtShort(c.datum),'Passung: '+(c.passung==='aendern'?'ändern':'prüfen'),'','Muster:'].concat((c.muster||[]).map(x=>'- '+x),['','Begründungen der Woche:'],begrIn(addDays(c.datum,-6),c.datum).map(b=>'- '+fmtShort(b.tag)+' · '+anlassText(b)+': „'+b.text+'“'+(b.stichwort?' ('+b.stichwort+')':'')));kopiere(L.join('\n')).then(()=>toast('Kopiert. In den Chat einfügen.')).catch(()=>toast('Kopieren ist hier nicht möglich.'));},
+  bsOk:()=>{stopRec();const c=letzterCheck();if(!c)return;const T=today();c.besprochen={text:(ui.f.bs||'').trim(),aud:ui.f.aud_bs||0,am:T};if(ui.f.bsAend&&ui.f.bsAend!=='keine')c.besprochen.aenderung=aenderungAnwenden(ui.f.bsAend,T,begrIn(addDays(T,-6),T).length);ui.modal=null;ui.f={};save();render();toast('Passung geklärt.');},
+  modalZu:()=>{ui.modal=null;ui.lockern=null;render();},
+  notiz:()=>{ui.modal={typ:'notiz'};ui.f={};renderOverlay();},
+  notizOk:()=>{stopRec();const t=(ui.f.mn||'').trim();const aud=ui.f.aud_mn||0;if(t||aud)day().notizen.push({at:hm(now()),text:t,aud:aud});ui.modal=null;ui.f={};save();render();toast('Notiz gespeichert.');},
+  scheitern:()=>{ui.modal={typ:'scheitern'};ui.f={};renderOverlay();},
+  scheiternOk:()=>{day().haupt.push({typ:'scheitern',min:0,at:hm(now()),text:(ui.f.ms||'').trim()});ui.modal=null;ui.f={};save();render();toast('Eingetragen.');},
+  abendOk:()=>{stopRec();day().abend={a:(ui.f.ea||'').trim(),b:(ui.f.eb||'').trim(),aud_a:ui.f.aud_ea||0,aud_b:ui.f.aud_eb||0,at:hm(now())};save();go('heute');toast('Abend-Rückschau gespeichert.');},
+  schattenStart:()=>{ensureAudio();ui.schatten={i:0};go('schatten');},
+  schattenWeiter:()=>{ui.schatten.i++;rerender();},
+  schattenZurueck:()=>{ui.schatten.i=Math.max(0,ui.schatten.i-1);rerender();},
+  schattenOk:()=>{const t=[ui.f.s3?'Was die Gestalt sagte: '+ui.f.s3.trim():'',ui.f.s4?'Was sie braucht: '+ui.f.s4.trim():''].filter(Boolean).join(' ');day().haupt.push({typ:'schatten',min:25,at:hm(now()),text:t,gestalt:gestalt()});ui.schatten=null;save();go('heute');toast('Schattenarbeit gespeichert.');},
+  angstStart:()=>{ensureAudio();ui.angst={i:0};ui.modal=null;go('angst');},
+  angstWeiter:()=>{ui.angst.i++;rerender();},
+  angstOk:()=>{const t=(ui.f.ag||'').trim();day().haupt.push({typ:'angst',min:3,at:hm(now()),text:t});ui.angst=null;save();go('heute');toast('Angst-Protokoll gespeichert.');},
+  info:el=>{const k=el.dataset.v;ui.info[k]=!ui.info[k];rerender();},
+  tagAuf:el=>{const k=el.dataset.v;ui.offen[k]=!ui.offen[k];render();},
+  wcStart:()=>wcStart(),
+  wcWeiter:()=>wcWeiter(),
+  kiStart:()=>{ui.ki=null;go('ki');},
+  kiErsetzen:()=>{ui.ki.ersetzen=!ui.ki.ersetzen;render();},
+  kiSenden:()=>kiSenden(),
+  kiStop:()=>{if(KICTL)KICTL.abort();},
+  kiKopie:()=>{const t=kiPrompt(kiDaten(today()));kopiere(t).then(()=>toast('Auftrag kopiert. In einen Chat einfügen, Antwort unten eintragen.')).catch(()=>toast('Kopieren ist hier nicht möglich.'));},
+  kiEinlesen:()=>{const o=kiParse(ui.f.kiPaste||'');if(!o){ui.ki.fehler='Kein gültiges JSON gefunden. Füge die ganze Antwort ein.';render();return;}ui.ki.erg=o;ui.ki.fehler='';render();},
+  kiJa:el=>kiEntscheid(Number(el.dataset.v),true),
+  kiNein:el=>kiEntscheid(Number(el.dataset.v),false),
+  exportMd:()=>{const keys=Object.keys(S.days).sort();if(!keys.length){toast('Noch keine Einträge.');return;}speichereDatei('punkt-journal-'+today()+'.md',keys.map(mdTag).join('\n\n'));},
+  exportJson:()=>speichereDatei('punkt-backup-'+today()+'.json',JSON.stringify(S,null,1)),
+  stammTag:el=>{const i=Number(el.dataset.v);const t=S.settings.stamm.tage;const idx=t.indexOf(i);if(idx>=0)t.splice(idx,1);else t.push(i);t.sort();save();render();},
+  eKurz:el=>{const an=!S.settings.hauptKurz;if(an){ui.lockern=()=>{S.settings.hauptKurz=true;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{S.settings.hauptKurz=false;save();render();}},
+  phaseZurueck:()=>{if(S.phase==='probe')return;wechsleZurueck(today());save();render();toast('Jetzt: '+PHASEN[S.phase].name);},
+  stammUebernehmen:()=>{const v=stammVorschlag();if(v){S.settings.stamm={tage:v.tage.sort(),zeit:v.zeit};save();toast('Stammfenster: '+v.tage.map(t=>WT[t]).join(', ')+' '+v.zeit);}},
+  confirmOk:()=>{const m=ui.modal;ui.modal=null;if(m.ok==='Zurücksetzen'){const keep=S.sim;S=defaultState();S.sim=keep;SES=null;save();go('auto');toast('Alles zurückgesetzt.');}else if(m.daten){S=mergeState(m.daten);save();go('auto');toast('Backup eingespielt.');}},
+  impulsJa:()=>{const d=day();d.impulse.b++;save();ui.modal.bemerkt=true;renderOverlay();},
+  // Testpanel
+  tMorgen:()=>setZeit(nachstMorgen()),
+  tStunde:()=>setZeit(new Date(now().getTime()+36e5)),
+  tTag:()=>setZeit(new Date(now().getTime()+864e5)),
+  tAbend:()=>{const d=new Date(now());d.setHours(21,0,0,0);if(d<=now())d.setDate(d.getDate()+1);setZeit(d);},
+  tStamm:()=>{const n=now();const [h,m]=S.settings.stamm.zeit.split(':').map(Number);const tage=S.settings.stamm.tage.length?S.settings.stamm.tage:[dow(keyOf(n))];for(let i=0;i<8;i++){const d=new Date(n);d.setDate(d.getDate()+i);d.setHours(h,m,0,0);if(d>n&&tage.includes(dow(keyOf(d)))){setZeit(d);return;}}},
+  tSonntag:()=>{const n=now();const d=new Date(n);d.setDate(d.getDate()+((6-dow(keyOf(n)))+7)%7);d.setHours(19,0,0,0);if(d<=n)d.setDate(d.getDate()+7);setZeit(d);},
+  tEcht:()=>{S.sim.offset=0;save();go('auto');},
+  pFace:()=>{S.sim.faceDown=!S.sim.faceDown;save();if(ui.route==='session'){const x=SES&&SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,SES.elapsed>=stepDur(x));}renderPanel();},
+  pDemo:()=>{S.settings.demo=!S.settings.demo;save();render();},
+  pNfc:()=>{if(ui.route==='gate'){const d=peek(today());if(!d||!d.anker)startSession('anker','nfc');}else toast('Der Aufkleber startet den Morgenanker im Gate.');},
+  pImpuls:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}const d=day();d.impulse.n++;save();ui.modal={typ:'impuls'};renderOverlay();},
+  pSchwelle:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}if(gateAktiv()){toast('Erst das Morgen-Gate abschließen.');return;}const L=S.begegnung.schwellen;if(!L.length){toast('Keine Schwellen angelegt.');return;}ui.swRot=((ui.swRot==null?-1:ui.swRot)+1)%L.length;ui.modal={typ:'swHinweis',id:L[ui.swRot].id};renderOverlay();},
+  pBImpuls:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}const d=day();d.bimp.n++;save();try{if(navigator.vibrate)navigator.vibrate([90,140,90,140,320]);}catch(e){}ui.modal={typ:'bimpuls'};renderOverlay();},
+  pGateAus:()=>{if(!S.created)return;S.pending={anlass:'gate_aus'};save();renderOverlay();},
+  pBeispiel:()=>beispielwoche(),
+  pRunde:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}if(S.phase==='probe'){S.phase='1';S.phaseStart=today();if(!S.phase1Start)S.phase1Start=today();}S.runde=S.runde>1?1:2;save();go('auto');toast(S.runde>1?'Erster Durchgang abgeschlossen: Spirale aktiv.':'Zurück im ersten Durchgang.');},
+  pWoche:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}if(gateAktiv()){toast('Erst das Morgen-Gate abschließen.');return;}wcStart();},
+  pReset:()=>{ui.modal={typ:'confirm',titel:'Alles zurücksetzen?',text:'Alle Testdaten, Einstellungen und Wochenchecks werden gelöscht.',ok:'Zurücksetzen'};renderOverlay();},
+  panelToggle:()=>{}
+};
+function rerender(){const a=document.getElementById('app');const top=a?a.scrollTop:0;if(ui.modal){renderOverlay();}else{render();}if(a)a.scrollTop=top;}
+const CH={
+  pPhase:el=>{S.phase=el.value;S.phaseStart=today();if(el.value!=='probe'&&!S.phase1Start)S.phase1Start=today();if(!S.created)S.created=today();save();go('auto');},
+  pAmpel:el=>{if(el.value){setAmpel(el.value,today(),'Test über das Testpanel');save();el.value='';go('auto');}},
+  eMorgen:el=>{const v=Number(el.value);if(v>S.settings.morgen){ui.lockern=()=>{S.settings.morgen=v;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{S.settings.morgen=v;save();render();}},
+  eZeit:el=>{if(el.value){S.settings.stamm.zeit=el.value;save();}},
+  eImpulse:el=>{const v=Number(el.value);if(v<S.settings.impulse){ui.lockern=()=>{S.settings.impulse=v;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{S.settings.impulse=v;save();render();}},
+  eNamen:el=>{S.settings.namen=el.value;save();},
+  eBImp:el=>{const v=Number(el.value);const bi=S.begegnung.impuls;if(v<bi.n){ui.lockern=()=>{S.begegnung.impuls.n=v;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{bi.n=v;save();render();}},
+  eBVon:el=>{S.begegnung.impuls.von=Number(el.value);save();},
+  eBBis:el=>{S.begegnung.impuls.bis=Number(el.value);save();},
+  eImport:el=>{const file=el.files&&el.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||typeof d.days!=='object')throw 0;ui.modal={typ:'confirm',titel:'Backup einspielen?',text:'Die aktuellen Testdaten werden durch das Backup ersetzt.',ok:'Einspielen',daten:d};renderOverlay();}catch(e){toast('Die Datei ist kein gültiges Backup.');}};r.readAsText(file);el.value='';}
+};
+document.addEventListener('click',e=>{ensureAudio();const el=e.target.closest('[data-a]');if(!el)return;const fn=A[el.dataset.a];if(!fn)return;if(el.tagName==='INPUT'&&el.type==='checkbox'){fn(el);return;}e.preventDefault();fn(el);});
+document.addEventListener('input',e=>{const el=e.target;if(el.dataset&&el.dataset.f){ui.f[el.dataset.f]=el.value;live();}});
+document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.ch&&CH[el.dataset.ch])CH[el.dataset.ch](el);});
+document.getElementById('panelToggle').addEventListener('click',()=>{const p=document.getElementById('panel');const o=p.classList.toggle('open');document.getElementById('panelToggle').setAttribute('aria-expanded',o);document.getElementById('panelToggle').textContent=o?'Schließen':'Test';});
+setInterval(tick,200);
+setInterval(()=>{renderPanel();if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
+setInterval(renderPanel,1000);
+let natPlanAlt='';
+function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begegnung,d=peek(today());const plan={angelegt:true,morgen:s.morgen,stamm:{aktiv:S.phase!=='probe',tage:s.stamm.tage,zeit:s.stamm.zeit},impulse:s.impulse,frage:ANKERFRAGE[S.phase][0],bimp:{n:b.impuls.n,von:b.impuls.von,bis:b.impuls.bis},schwellen:b.schwellen.filter(x=>x.typ==='zeit'&&x.zeit).map(x=>({id:x.id,name:x.name,zeit:x.zeit})),fertig:d&&(d.frei||(d.anker&&d.journal&&d.skala))?today():''};const j=JSON.stringify(plan);if(j!==natPlanAlt){natPlanAlt=j;nat('plan',j);}}
+function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
+window.punktNativ={
+  lage:b=>{S.sim.faceDown=!!b;if(ui.route==='session'&&SES){const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,SES.elapsed>=stepDur(x));}},
+  aktion:a=>{if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
+  resume:()=>{nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
+  zurueck:()=>{if(!S.created)return false;const o=document.getElementById('overlay');if(o&&o.innerHTML){const z=o.querySelector('[data-a="modalZu"]');if(z)z.click();return true;}if(ui.route==='session'||gateAktiv())return true;if(ui.route!=='heute'){go('heute');return true;}return false;}
+};
+render();
+initCaps();
+let natLeisteAlt='';
+function natLeiste(){try{const e=document.querySelector('#app .scr');let c=e?getComputedStyle(e).backgroundColor:'';if(!c||c==='rgba(0, 0, 0, 0)')c=getComputedStyle(document.body).backgroundColor;if(c!==natLeisteAlt){natLeisteAlt=c;nat('leiste',c);}}catch(e){}}
+if(NATIVE){const renderOhne=render;render=function(){renderOhne.apply(this,arguments);natLeiste();};nativeSync();nativePlan();natLeiste();}
+</script>

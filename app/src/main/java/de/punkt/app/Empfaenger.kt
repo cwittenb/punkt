@@ -28,7 +28,7 @@ class AlarmReceiver : BroadcastReceiver() {
             "imp" -> {
                 if (Laufzeit.wach || gate) return
                 Speicher.zaehlen(ctx, "imp")
-                melden(ctx, "impuls", Notif.ID_IMPULS, p.optString("frage", "Bin ich gewahr?"), null, "impuls", 45)
+                melden(ctx, "impuls", Notif.ID_IMPULS, p.optString("frage", "Bin ich gewahr?"), p.optString("hinweis").ifEmpty { null }, "impuls", 45)
             }
             "bimp" -> {
                 if (Laufzeit.wach || gate) return

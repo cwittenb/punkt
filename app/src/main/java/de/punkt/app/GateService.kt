@@ -20,6 +20,7 @@ class GateService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         Speicher.prefs(this).edit().putBoolean("gateWarAn", true).apply()
+        Protokoll.schreib(this, "Gate-Dienst verbunden")
         heim = heimPaket()
     }
 
@@ -31,6 +32,7 @@ class GateService : AccessibilityService() {
         val t = SystemClock.elapsedRealtime()
         if (t - zuletzt < 1200) return
         zuletzt = t
+        Protokoll.schreib(this, "Gate holt die App zurück (vor: $pkg)")
         val i = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra("aktion", "gate")

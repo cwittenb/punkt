@@ -34,7 +34,10 @@ class Bruecke(private val a: MainActivity) {
 
     @JavascriptInterface
     fun plan(json: String): Boolean {
+        val alt = Speicher.plan(a)?.optString("fertig") ?: ""
         Speicher.planSetzen(a, json)
+        val neu = try { JSONObject(json).optString("fertig") } catch (e: Exception) { "" }
+        if (neu != alt) Protokoll.schreib(a, if (neu == Speicher.heute()) "Gate für heute frei" else "Gate-Stand: " + (neu.ifEmpty { "offen" }))
         Planer.plane(a)
         return true
     }
@@ -127,4 +130,13 @@ class Bruecke(private val a: MainActivity) {
 
     @JavascriptInterface
     fun dunkel(): Boolean = a.dunkel()
+
+    @JavascriptInterface
+    fun log(text: String): Boolean {
+        Protokoll.schreib(a, "Web: " + text.take(300))
+        return true
+    }
+
+    @JavascriptInterface
+    fun protokoll(): String = Protokoll.lesen(a)
 }

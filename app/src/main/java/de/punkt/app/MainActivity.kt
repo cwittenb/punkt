@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -32,6 +33,7 @@ class MainActivity : Activity() {
         private set
 
     private var geladen = false
+    private var konfig: Configuration? = null
     private var offeneAktion: String? = null
     private var dateiRueckruf: ValueCallback<Array<Uri>>? = null
     val recorder by lazy { Recorder(this) }
@@ -60,6 +62,8 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Protokoll.schreib(this, "App startet" + if (savedInstanceState != null) " (neu aufgebaut)" else "")
+        konfig = Configuration(resources.configuration)
         Laufzeit.aktivitaet = WeakReference(this)
         Notif.kanaele(this)
 
@@ -82,6 +86,14 @@ class MainActivity : Activity() {
                     offeneAktion = null
                     aktion(it)
                 }
+            }
+
+            // Stirbt die Web-Oberfläche, die Seite neu aufbauen statt die App abstürzen zu lassen
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                Protokoll.schreib(this@MainActivity, "Web-Oberfläche beendet (" + (if (detail.didCrash()) "Absturz" else "vom System") + "), baue neu auf")
+                geladen = false
+                recreate()
+                return true
             }
 
             override fun shouldOverrideUrlLoading(view: WebView, req: WebResourceRequest): Boolean {
@@ -126,6 +138,7 @@ class MainActivity : Activity() {
     private fun verarbeite(i: Intent?) {
         if (i == null) return
         val d = i.data
+        Protokoll.schreib(this, "Aufruf: " + (i.getStringExtra("aktion") ?: d?.toString() ?: i.action ?: "–"))
         val a = when {
             d != null && d.scheme == "punkt" -> if (d.host == "anker") "nfc" else d.host
             else -> i.getStringExtra("aktion")
@@ -147,6 +160,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Protokoll.schreib(this, "vorne")
         istVorne = true
         Laufzeit.aktivitaet = WeakReference(this)
         if (geladen) web.evaluateJavascript("window.punktNativ&&window.punktNativ.resume()", null)
@@ -154,10 +168,12 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         istVorne = false
+        Protokoll.schreib(this, "im Hintergrund")
         super.onPause()
     }
 
     override fun onDestroy() {
+        Protokoll.schreib(this, "App beendet" + (if (isFinishing) " (geschlossen)" else "") + (if (isChangingConfigurations) " (Konfiguration)" else ""))
         wach(false)
         recorder.stopp()
         tts?.shutdown()
@@ -178,6 +194,8 @@ class MainActivity : Activity() {
 
     override fun onConfigurationChanged(neu: Configuration) {
         super.onConfigurationChanged(neu)
+        Protokoll.schreib(this, "Konfiguration geändert: 0x" + Integer.toHexString(konfig?.diff(neu) ?: 0))
+        konfig = Configuration(neu)
         // Dunkles Systemthema wechselt: Web-App neu zeichnen lassen
         js("typeof render==='function'&&render()")
     }
@@ -208,6 +226,7 @@ class MainActivity : Activity() {
 
     /** Während einer Übung: Display anlassen, Lage messen, Sprache vorbereiten. */
     fun wach(an: Boolean) {
+        if (an != Laufzeit.wach) Protokoll.schreib(this, if (an) "Übung: Display bleibt an" else "Übung vorbei")
         Laufzeit.wach = an
         runOnUiThread {
             if (an) {
@@ -268,6 +287,11 @@ class MainActivity : Activity() {
 
     fun dunkel(): Boolean =
         (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) Protokoll.schreib(this, "Speicher knapp: Stufe $level")
+    }
 
     companion object {
         const val REQ_DATEI = 41

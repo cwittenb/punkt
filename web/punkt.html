@@ -333,6 +333,7 @@ function mergeState(x){const d=defaultState();const o=Object.assign(d,x||{});o.s
 let S=defaultState();
 try{const t=localStorage.getItem(STORE_KEY);if(t)S=mergeState(JSON.parse(t));}catch(e){}
 if(NATIVE){try{const t=nat('zustandLaden');if(t){const n=mergeState(JSON.parse(t));if((n.savedAt||0)>(S.savedAt||0))S=n;}}catch(e){}}
+if(NATIVE&&!S.settings.testmodus&&S.sim.offset)S.sim.offset=0;
 let DBREF=null,STORE=NATIVE?'Handy':'Browser',SAMPLE=null,DOWNLOADS=null,saveTimer=null;
 function save(){
   S.savedAt=Date.now();
@@ -379,17 +380,17 @@ const TX={
   koerperErdend:{titel:'Körper-Erkundung, erdend',text:'Augen offen, Füße auf dem Boden. Spür Gewicht, Kontakt und Atem. Heute keine Frage nach dem Beobachter.',blick:true},
   erdung:{titel:'Erdungsübung',text:'Fünf Dinge sehen, vier hören, drei berühren. Dann langsam durch den Raum gehen und die Fußsohlen spüren.',blick:true},
   leere:{titel:'Leere',text:'Augen offen. Nichts tun, nichts suchen. Kommt Langeweile: Wo sitzt sie? Ist der Raum, in dem sie erscheint, selbst gelangweilt? Werden Unruhe oder Druck stärker als mittel: eine Minute Kohärenzatmung, dann aufhören. Auch das zählt.',leere:true},
-  sinne:{titel:'Sinnes-Erkundung',text:'Gern im Gehen. Wo endet das Hören, wo beginnt der Klang? Dann dasselbe mit dem Sehen. Findest du eine Grenze?',blick:true},
+  sinne:{titel:'Sinnes-Erkundung',text:'Gern im Gehen. Wo endet das Hören, wo beginnt der Klang? Dann dasselbe mit dem Sehen. Findest du eine Grenze?',blick:true,gehen:true},
   frei:{titel:'Freie Erkundung',text:'Körper oder Sinne, was heute ruft. Dieselbe Frage wie immer: Wo ist die Grenze zwischen dem Erlebten und dem, der erlebt?'},
   harding:{titel:'Harding-Experiment',text:'Zeig auf die Wand, dann auf den Boden, dann auf deine Füße. Zum Schluss dorthin, wo andere dein Gesicht sehen. Was findest du dort, in der Erfahrung, nicht im Wissen?',blick:true},
   metta:{titel:'Metta mit Wendung',text:'Wohlwollen für einen nahen Menschen, dann für einen neutralen, dann für einen schwierigen. Zum Schluss die Frage: Wer wünscht hier wem?'},
   wuenschen:{titel:'Wünschen ohne zu brauchen',text:'Stell dir ein Ziel lebhaft vor, so wie du es kennst. Dann frag: Wer will das? Wäre ich ohne es weniger ganz?'},
-  bwVor:{titel:'Vorbereitung',text:'Nur sitzend oder liegend an einem sicheren Ort, nie im Wasser oder beim Fahren. Bei Herz-Kreislauf-Erkrankungen, Epilepsie, Schwangerschaft oder in einer psychischen Krise vorher ärztlich abklären. Bei Schwindel oder starkem Kribbeln pausieren und normal atmen.',blick:true},
+  bwVor:{titel:'Vorbereitung',text:'Nur sitzend oder liegend an einem sicheren Ort, nie im Wasser oder beim Fahren. Bei Herz-Kreislauf-Erkrankungen, Epilepsie, Schwangerschaft oder in einer psychischen Krise vorher ärztlich abklären. Bei Schwindel oder starkem Kribbeln pausieren und normal atmen.',blick:true,offen:true},
   bwAtmen:{titel:'Verbundenes Atmen',text:'Ein und aus ohne Pause, in deinem Tempo, eher tief als schnell. Pausiere, wann immer du willst.'},
   bwRuhe:{titel:'Ruhe',text:'Normal atmen, liegen bleiben. Nichts festhalten, was auftaucht.'},
   bwNach:{titel:'Nachspüren',text:'Was ist jetzt da? Und was davon war schon vorher da?'},
   klang:{titel:'Klangspiel',text:'Alle schließen die Augen. Wer hört den leisesten Ton? Nach einer Minute erzählt jeder, was er gehört hat.',blick:true},
-  ankerGehen:{titel:'Anker-Frage im Gehen',text:'Bei jedem zehnten Schritt: Bin ich gewahr? Nicht antworten, nur bemerken.',blick:true}
+  ankerGehen:{titel:'Anker-Frage im Gehen',text:'Bei jedem zehnten Schritt: Bin ich gewahr? Nicht antworten, nur bemerken.',blick:true,gehen:true}
 };
 function st(key,min){return Object.assign({key:key,min:min},TX[key]);}
 const ALLE=['probe','1','2','3'];const ORTE=['allein','arbeit','unterwegs','kinder'];
@@ -558,15 +559,19 @@ function schlaf(){if(NATIVE)nat('wach',false);if(WAKE){try{WAKE.release();}catch
 let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLock&&!WAKE)navigator.wakeLock.request('screen').then(l=>{WAKE=l;l.addEventListener('release',()=>{WAKE=null;});}).catch(()=>{});}catch(e){}}
 
 /* ---------- Sessions ---------- */
+const SES_KEY='punkt-ses';
+function sesMerken(){try{if(SES)localStorage.setItem(SES_KEY,JSON.stringify({s:SES,at:Date.now()}));else localStorage.removeItem(SES_KEY);}catch(e){}ui.sesGemerkt=Date.now();}
+function plog(t){if(typeof NATIVE!=='undefined'&&NATIVE)nat('log',String(t));}
 function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
-function startSession(typ,ctx,extra){ensureAudio();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');}
+function startSession(typ,ctx,extra){ensureAudio();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');sesMerken();plog('Übung gestartet: '+typ);}
 function stepDur(s){return s.sek!=null?s.sek:s.min*secPerMin();}
 function stepFertig(x){return SES.elapsed>=stepDur(x)&&(!x.pacer||!!SES.atemAus);}
 function stufeEnde(){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}gong();render();}
-function stepLaeuft(s){return !!(s.pacer||s.blick||S.sim.faceDown);}
+function brauchtLage(s){if(SES&&SES.typ==='schwelle')return false;if(s.offen||s.gehen)return false;if(s.pacer)return S.settings.begleitung!=='stumm';return true;}
+function stepLaeuft(s){return !brauchtLage(s)||!!S.sim.faceDown;}
 function sesMinuten(){let m=0;SES.plan.forEach((x,i)=>{if(i<SES.i)m+=x.min;else if(i===SES.i)m+=Math.min(x.min,SES.elapsed/secPerMin());});return Math.round(m*10)/10;}
-function sesWeiter(){const s=SES;if(!s)return;if(s.i<s.plan.length-1){s.i++;s.elapsed=0;s.atemAus=false;s.warm=s.typ==='schwelle'?0:warmDauer(s.plan[s.i],false);s.warmEl=0;s.last=Date.now();render();}else sesFertig();}
-function sesFertig(){const s=SES;const at=hm(now());schlaf();
+function sesWeiter(){const s=SES;if(!s)return;if(s.i<s.plan.length-1){s.i++;s.elapsed=0;s.atemAus=false;s.warm=s.typ==='schwelle'?0:warmDauer(s.plan[s.i],false);s.warmEl=0;s.last=Date.now();render();sesMerken();plog('Schritt '+(s.i+1)+' von '+s.plan.length+': '+s.plan[s.i].titel);}else sesFertig();}
+function sesFertig(){const s=SES;const at=hm(now());schlaf();try{localStorage.removeItem(SES_KEY);}catch(e){}plog('Übung fertig: '+s.typ);
   if(s.typ==='schwelle'){SES=null;day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
   const min=sesMinuten();SES=null;
   if(s.typ==='anker'){day().anker={min:min,variante:ampelAm().stufe,at:at};save();go('journal');return;}
@@ -579,10 +584,14 @@ function tick(){
       if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur&&!s.pacer){stufeEnde();return;}}
       const z=document.getElementById('s-zeit');if(z)z.textContent=mmss(dur-SES.elapsed);const rg=document.getElementById('s-ring');if(rg)rg.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.elapsed/dur)).toFixed(2));
       const stt=document.getElementById('s-status');if(stt)stt.innerHTML=sesStatus(s,stepFertig(s));}}
+  if(SES&&t-(ui.sesGemerkt||0)>3000)sesMerken();
   if(REC){const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent='● '+mss((t-REC.start)/1000);live();}
   pacerTick();
 }
-function sesStatus(s,fertig){if(fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';if(s.pacer)return SES&&SES.elapsed>=stepDur(s)?'Noch dieser Atemzug, dann der Gong.':'Folge dem Kreis oder der Begleitung.';if(s.blick)return 'Augen offen, das Display darf oben liegen.';return S.sim.faceDown?'<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten':'<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';}
+function sesStatus(s,fertig){if(fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';
+  if(s.pacer&&SES&&SES.elapsed>=stepDur(s))return 'Noch dieser Atemzug, dann der Gong.';
+  if(!brauchtLage(s))return s.pacer?'Folge dem Kreis.':s.gehen?'Im Gehen darf das Handy in die Tasche.':'Das Display darf oben liegen.';
+  return S.sim.faceDown?'<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten'+(s.pacer?' · '+(S.settings.begleitung==='ton'?'der Ton':'die Stimme')+' führt':''):'<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';}
 </script>
 <script>
 'use strict';
@@ -656,6 +665,8 @@ function stichChips(key,liste,cols){liste=liste||STICHWORTE;return '<div class="
 function ampelChip(s){return '<span class="chip '+(s==='gruen'?'good':s==='gelb'?'warn':'crit')+'"><span class="dot '+s+'"></span>Ampel '+STUFE_NAME[s].toLowerCase()+'</span>';}
 function passungChip(p){const m={passt:['purple','Passung: passt'],pruefen:['pink','Passung: prüfen'],aendern:['pink','Passung: ändern']}[p]||['purple','Passung: passt'];return '<span class="chip '+m[0]+'">'+m[1]+'</span>';}
 function ringHtml(inner,anteil,warm){return '<div class="ring-wrap'+(warm?' klein':'')+'"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="94" class="ring-bg"/><circle cx="100" cy="100" r="94" class="ring-fg'+(warm?' warm':'')+'" id="s-ring" pathLength="100" stroke-dasharray="100" stroke-dashoffset="'+(100-100*Math.min(1,anteil||0)).toFixed(2)+'"/></svg><div class="ring-in">'+inner+'</div></div>';}
+function warmHinweis(x){if(x.gehen)return 'Lies in Ruhe, dann steck das Handy ein. Die Zeit läuft nach dem Ton.';if(!brauchtLage(x))return x.pacer?'Setz dich zurecht, der Kreis führt den Atem. Mit Ton oder Stimme kannst du das Handy weglegen.':'Lies in Ruhe. Die Übung beginnt nach dem Ton.';if(x.pacer)return 'Leg das Handy mit dem Display nach unten. '+(S.settings.begleitung==='ton'?'Der Ton':'Die Stimme')+' führt den Atem, die Zeit läuft nach dem Ton.';return 'Lies in Ruhe, dann leg das Handy mit dem Display nach unten. Die Zeit läuft nach dem Ton.';}
+function begleitSeg(){const b=S.settings.begleitung;return '<div class="seg" role="group" aria-label="Atembegleitung" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(b===x[0]?'on':'')+'" aria-pressed="'+(b===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';}
 function pacerHtml(anteil){const b=S.settings.begleitung;const kreis='<div class="pacer" id="pacer" aria-hidden="true" style="transform:scale(.55)"></div>';return (anteil!=null?ringHtml(kreis,anteil):'<div class="pacer-wrap">'+kreis+'</div>')+'<p class="pacer-word" id="pacer-word" aria-hidden="true"></p><div class="seg" role="group" aria-label="Atembegleitung" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(b===x[0]?'on':'')+'" aria-pressed="'+(b===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';}
 
 /* ---------- Ansichten ---------- */
@@ -663,7 +674,7 @@ const V={};
 V.start=()=>'<div class="scr"><p class="logo" role="img" aria-label="Punkt">.</p>'+(NATIVE?'':'<span class="eyebrow">Testversion</span>')+'<h1 class="h1">Willkommen.</h1><p class="lead">'+(NATIVE?'Morgen-Gate, Praxis, Journal, Tagesskala, Wochencheck. Die App meldet sich zu deinen Zeiten. Sonst ist sie still.':'Diese Version führt dich durch den ganzen Weg: Morgen-Gate, Praxis, Journal, Tagesskala, Wochencheck und KI-Auswertung. Uhrzeit, Sensoren und Schwerpunkte steuerst du im Testpanel.')+'</p>'+
   '<div class="card"><strong>Die Probephase dauert zwei Wochen.</strong><p class="soft">Jeden Tag der Morgenanker ab '+S.settings.morgen+' Uhr. Dazu mindestens fünfmal 15 Minuten Hauptpraxis in wechselnden Zeitfenstern. So findest du dein Stammfenster.</p></div>'+
   '<div class="card"><strong>Was gespeichert wird</strong><p class="soft small">'+(NATIVE?'Alles bleibt auf diesem Handy: Journal, Aufnahmen, Einstellungen. Exportieren kannst du in den Optionen.':'Deine Testdaten bleiben in diesem Artefakt und sind nur für dich sichtbar. Sprachaufnahmen werden nur simuliert, weil der Browser hier kein Mikrofon freigibt.')+'</p></div>'+
-  '<div class="grow"></div><button type="button" class="btn" data-a="beginnen">Probephase heute beginnen</button><button type="button" class="btn sec" data-a="pBeispiel">Mit Beispieldaten starten</button></div>';
+  '<div class="grow"></div><button type="button" class="btn" data-a="beginnen">Probephase heute beginnen</button>'+(NATIVE&&!S.settings.testmodus?'':'<button type="button" class="btn sec" data-a="pBeispiel">Mit Beispieldaten starten</button>')+'</div>';
 
 V.gate=()=>{const a=ampelAm();const plan=ankerPlan();const total=plan.reduce((s,x)=>s+x.min,0);const haupt=plan[1]||plan[0];const d=peek(today());
   let ampelBox='';
@@ -680,7 +691,7 @@ V.session=()=>{const s=SES;if(!s)return V.heute();const x=s.plan[s.i];const dur=
   const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);
   return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="sesAbbruch">Abbrechen</button><span class="small muted">'+esc(titel)+' · '+esc(PHASEN[S.phase].kurz)+'</span></div>'+
   '<ol class="steps" aria-label="Ablauf">'+s.plan.map((y,k)=>'<li class="step '+(k<s.i?'done':k===s.i?'cur':'')+'" '+(k===s.i?'aria-current="step"':'')+'><span class="sd"></span><span class="grow">'+esc(y.titel)+'</span><span class="muted" style="font-weight:400">'+(y.sek!=null?y.sek+' Sek.':y.min+' Min.')+'</span></li>').join('')+'</ol>'+
-  (s.warm>0?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(s.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+(x.pacer||x.blick?'Setz dich zurecht. Die Übung beginnt nach dem Ton.':'Lies in Ruhe, dann leg das Handy mit dem Display nach unten. Die Zeit läuft nach dem Ton.')+'</p>'+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(s.warm-s.warmEl)+'</span><span class="ring-sub">Sekunden</span>',s.warmEl/s.warm,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
+  (s.warm>0?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(s.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+warmHinweis(x)+'</p>'+(x.pacer?begleitSeg():'')+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(s.warm-s.warmEl)+'</span><span class="ring-sub">Sekunden</span>',s.warmEl/s.warm,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
   '<section class="card grow"><div class="row between" style="align-items:baseline"><h1 class="h2">'+esc(x.titel)+'</h1>'+(x.pacer?'<span class="timer" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(dur-s.elapsed)+'</span>':'')+'</div><p class="soft">'+esc(x.text)+'</p>'+(x.pacer?pacerHtml(s.elapsed/dur):ringHtml('<span class="ring-time" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(dur-s.elapsed)+'</span><span class="ring-sub">von '+(x.sek!=null?x.sek+' Sek.':x.min+' Min.')+'</span>',s.elapsed/dur))+(S.settings.demo&&x.sek==null?'<p class="xs muted" style="text-align:center">Demo-Tempo: 1 Minute dauert hier 5 Sekunden.</p>':'')+'<p class="status" id="s-status">'+sesStatus(x,fertig)+'</p>'+
   (x.leere&&!fertig?'<button type="button" class="btn sec small" data-a="leereGenug">Genug für heute. Zählt als geschafft.</button>':'')+'</section>'+
   '<button type="button" class="btn" data-a="sesWeiter" '+(fertig?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
@@ -857,7 +868,7 @@ V.einst=()=>{const s=S.settings;const bi=S.begegnung.impuls;
   '<section class="card"><h2 class="lab">Morgenfenster</h2><label class="small muted" for="e-morgen">Beginn</label><select id="e-morgen" data-ch="eMorgen">'+[4,5,6,7,8].map(h=>'<option value="'+h+'" '+(s.morgen===h?'selected':'')+'>'+h+':00 Uhr</option>').join('')+'</select><p class="xs muted">Später ist eine Lockerung und braucht einen Satz Begründung.</p></section>'+
   '<section class="card"><h2 class="lab">Stammfenster</h2><div class="seg" role="group" aria-label="Wochentage" style="grid-template-columns:repeat(7,minmax(0,1fr))">'+WT.map((w,i)=>'<button type="button" class="segb '+(s.stamm.tage.includes(i)?'on':'')+'" aria-pressed="'+s.stamm.tage.includes(i)+'" data-a="stammTag" data-v="'+i+'">'+w+'</button>').join('')+'</div><label class="small muted" for="e-zeit">Uhrzeit</label><input type="time" id="e-zeit" value="'+esc(s.stamm.zeit)+'" data-ch="eZeit"></section>'+
   '<section class="card"><h2 class="lab">Tagesimpulse pro Tag</h2><select id="e-imp" data-ch="eImpulse">'+[0,5,10,14,20].map(n=>'<option value="'+n+'" '+(s.impulse===n?'selected':'')+'>'+n+'</option>').join('')+'</select></section>'+
-  (NATIVE?(()=>{let g={};try{g=JSON.parse(nat('gateStatus')||'{}');}catch(e){}return '<section class="card"><h2 class="lab">Morgen-Gate</h2><div class="row"><span class="dot '+(g.an?'gruen':'rot')+'"></span><span class="small">'+(g.an?'Bedienungshilfe ist an. Das Gate greift ab '+s.morgen+' Uhr.':'Bedienungshilfe ist aus. Ohne sie sperrt das Gate nur innerhalb der App.')+'</span></div><button type="button" class="btn sec small" data-a="gateEinst">Bedienungshilfen öffnen</button><p class="xs muted">Beim ersten Mal: App-Info von „.“ → ⋮ → „Eingeschränkte Einstellungen zulassen“. Dann unter Bedienungshilfen → Installierte Apps „. Morgen-Gate“ einschalten.</p></section><section class="card"><h2 class="lab">Testmodus</h2><label class="tog"><input type="checkbox" '+(s.testmodus?'checked':'')+' data-a="testmodus"> Testpanel zeigen</label></section>';})():'')+
+  (NATIVE?(()=>{let g={};try{g=JSON.parse(nat('gateStatus')||'{}');}catch(e){}return '<section class="card"><h2 class="lab">Morgen-Gate</h2><div class="row"><span class="dot '+(g.an?'gruen':'rot')+'"></span><span class="small">'+(g.an?'Bedienungshilfe ist an. Das Gate greift ab '+s.morgen+' Uhr.':'Bedienungshilfe ist aus. Ohne sie sperrt das Gate nur innerhalb der App.')+'</span></div><button type="button" class="btn sec small" data-a="gateEinst">Bedienungshilfen öffnen</button><p class="xs muted">Beim ersten Mal: App-Info von „.“ → ⋮ → „Eingeschränkte Einstellungen zulassen“. Dann unter Bedienungshilfen → Installierte Apps „. Morgen-Gate“ einschalten.</p></section><section class="card"><h2 class="lab">Testmodus</h2><label class="tog"><input type="checkbox" '+(s.testmodus?'checked':'')+' data-a="testmodus"> Testpanel zeigen</label></section>'+(s.testmodus?'<section class="card"><h2 class="lab">Protokoll</h2><pre class="xs" style="white-space:pre-wrap;max-height:260px;overflow:auto;margin:0">'+esc(nat('protokoll')||'')+'</pre><button type="button" class="btn sec small" data-a="protKopie">Protokoll kopieren</button></section>':'');})():'')+
   '<section class="card"><h2 class="lab">Darstellung</h2><div class="themes" role="group" aria-label="Farbschema">'+[['system','System'],['hell','Hell'],['dunkel','Dunkel']].map(x=>'<button type="button" class="segb '+(s.theme===x[0]?'on':'')+'" aria-pressed="'+(s.theme===x[0])+'" data-a="theme" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div><p class="xs muted">Die Übungsbildschirme bleiben immer dunkel, damit es früh am Morgen ruhig bleibt.</p></section>'+
   '<section class="card"><h2 class="lab">Begegnung</h2><p class="small">Kreis: '+esc(kreisNamen())+(S.begegnung.stufeAb?', zuletzt erweitert am '+fmtShort(S.begegnung.stufeAb):'')+'</p><label class="small muted" for="e-bimp">Stiller Impuls pro Tag</label><select id="e-bimp" data-ch="eBImp">'+[0,2,4,6].map(n=>'<option value="'+n+'" '+(bi.n===n?'selected':'')+'>'+(n?n+'×':'aus')+'</option>').join('')+'</select><div class="row" style="gap:10px"><label class="small muted" for="e-bvon">von</label><select id="e-bvon" data-ch="eBVon">'+[6,7,8,9,10,11,12].map(h=>'<option value="'+h+'" '+(bi.von===h?'selected':'')+'>'+h+' Uhr</option>').join('')+'</select><label class="small muted" for="e-bbis">bis</label><select id="e-bbis" data-ch="eBBis">'+[14,15,16,17,18,19,20].map(h=>'<option value="'+h+'" '+(bi.bis===h?'selected':'')+'>'+h+' Uhr</option>').join('')+'</select></div><p class="xs muted">Weniger Impulse ist eine Lockerung und braucht einen Satz Begründung.</p>'+(bStufe()>1?'<button type="button" class="btn sec small" data-a="bStufeZurueck">Kreis verkleinern</button>':'')+'</section>'+
   '<section class="card"><h2 class="lab">Atembegleitung</h2><div class="seg" role="group" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(s.begleitung===x[0]?'on':'')+'" aria-pressed="'+(s.begleitung===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div></section>'+
@@ -1104,10 +1115,11 @@ const A={
   sesWeiter:()=>sesWeiter(),
   warmSkip:()=>{if(SES){SES.warm=0;SES.warmEl=0;SES.last=Date.now();render();}},
   gateEinst:()=>{nat('gateEinstellungen');},
-  testmodus:()=>{S.settings.testmodus=!S.settings.testmodus;save();render();},
+  protKopie:()=>{kopiere(nat('protokoll')||'').then(()=>toast('Protokoll kopiert.')).catch(()=>toast('Kopieren ist hier nicht möglich.'));},
+  testmodus:()=>{S.settings.testmodus=!S.settings.testmodus;if(!S.settings.testmodus)S.sim.offset=0;save();render();},
   theme:el=>{S.settings.theme=el.dataset.v;save();render();},
   leereGenug:()=>{SES.elapsed=stepDur(SES.plan[SES.i]);sesWeiter();},
-  sesAbbruch:()=>{const typ=SES&&SES.typ;SES=null;schlaf();go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
+  sesAbbruch:()=>{const typ=SES&&SES.typ;SES=null;schlaf();sesMerken();plog('Übung abgebrochen: '+typ);go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
   bnotiz:()=>{ui.bnZurueck=['heute','abend'].includes(ui.route)?ui.route:'begegnung';ui.modal=null;go('bnotiz');},
   bnotizOk:()=>{stopRec();const f=ui.f;const T=today();const d=day();const e={id:uid(),at:hm(now()),kat:f.bKat,gew:f.bGew,rueck:f.bRueck,kon:f.bKon,aus:f.bAus||null,text:(f.bt||'').trim(),aud:f.aud_bt||0,stufe:bStufe()};d.begeg.push(e);
     let msg=e.rueck>0?bRueck(e.rueck)+'× zurückgekehrt. Genau das ist die Übung.':'Notiert. Es jetzt zu bemerken, ist auch eine Rückkehr.';
@@ -1119,7 +1131,7 @@ const A={
   swWeg:el=>{S.begegnung.schwellen=S.begegnung.schwellen.filter(x=>x.id!==el.dataset.v);save();render();},
   bImpulsJa:()=>{const d=day();d.bimp.b++;save();ui.modal=null;render();toast('Bemerkt. Weiter im Gespräch.');},
   bStufeZurueck:()=>{ui.lockern=()=>{S.begegnung.stufe=Math.max(1,bStufe()-1);S.begegnung.stufeAb=today();};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();},
-  begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const wd=document.getElementById('pacer-word');atemSignal(wd&&wd.textContent?wd.textContent:'ein');},
+  begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const wd=document.getElementById('pacer-word');atemSignal(wd&&wd.textContent?wd.textContent:'ein');if(ui.route==='session'&&SES){if(SES.warm>0)render();else{const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}}},
   mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};}rerender();},
   audioWeg:el=>{ui.f['aud_'+el.dataset.v]=0;rerender();},
   set:el=>{ui.f[el.dataset.k]=JSON.parse(el.dataset.v);rerender();},
@@ -1221,12 +1233,14 @@ function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begeg
 function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
 window.punktNativ={
   lage:b=>{S.sim.faceDown=!!b;if(ui.route==='session'&&SES){const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}},
-  aktion:a=>{if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
-  resume:()=>{nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
+  aktion:a=>{plog('Aktion '+a+' auf '+ui.route);if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
+  resume:()=>{plog('Zurück in der App · '+ui.route+(SES?' · Schritt '+(SES.i+1):''));nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
   zurueck:()=>{if(!S.created)return false;const o=document.getElementById('overlay');if(o&&o.innerHTML){const z=o.querySelector('[data-a="modalZu"]');if(z)z.click();return true;}if(ui.route==='session'||gateAktiv())return true;if(ui.route!=='heute'){go('heute');return true;}return false;}
 };
+try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&S.created&&Date.now()-g.at<20*60000){SES=g.s;SES.last=Date.now();ui.route='session';wach();ui.sesWieder=true;}else localStorage.removeItem(SES_KEY);}catch(e){}
 render();
 initCaps();
+plog('Seite geladen · '+ui.route+(ui.sesWieder?' · Übung fortgesetzt':''));if(ui.sesWieder)toast('Übung fortgesetzt.');
 let natLeisteAlt='';
 function natLeiste(){try{const e=document.querySelector('#app .scr');let c=e?getComputedStyle(e).backgroundColor:'';if(!c||c==='rgba(0, 0, 0, 0)')c=getComputedStyle(document.body).backgroundColor;if(c!==natLeisteAlt){natLeisteAlt=c;nat('leiste',c);}}catch(e){}}
 if(NATIVE){const renderOhne=render;render=function(){renderOhne.apply(this,arguments);natLeiste();};nativeSync();nativePlan();natLeiste();}

@@ -14,7 +14,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val p = Speicher.plan(ctx)
         if (p != null && zeit > 0L) {
             val tag = Instant.ofEpochMilli(zeit).atZone(ZoneId.systemDefault()).toLocalDate()
-            Planer.termine(p, tag).filter { it.zeit == zeit }.forEach { ausfuehren(ctx, p, it) }
+            val jetzt = Planer.termine(p, tag).filter { it.zeit == zeit }
+            Protokoll.schreib(ctx, "Wecker: " + jetzt.joinToString { it.art } + (if (Laufzeit.wach) " (Übung läuft)" else ""))
+            jetzt.forEach { ausfuehren(ctx, p, it) }
             Speicher.prefs(ctx).edit().putLong("erledigtBis", zeit).apply()
         }
         Planer.plane(ctx)

@@ -550,7 +550,9 @@ function atemSignal(w){const m=S.settings.begleitung;if(m==='ton')ton(w==='ein'?
 const ATEM={epoch:0,idx:-1};
 function pacerTick(){const el=document.getElementById('pacer');if(!el){ui.lastPacer=false;return;}
   if(!ui.lastPacer){ui.lastPacer=true;ATEM.epoch=Date.now();ATEM.idx=-1;}
-  const idx=Math.floor((Date.now()-ATEM.epoch)/5000);if(idx===ATEM.idx)return;ATEM.idx=idx;const w=idx%2===0?'ein':'aus';
+  const idx=Math.floor((Date.now()-ATEM.epoch)/5000);const cur=ui.route==='session'&&SES&&SES.warm<=0?SES.plan[SES.i]:null;if(cur&&cur.pacer&&SES.atemAus)return;if(idx===ATEM.idx)return;
+  if(cur&&cur.pacer&&idx>0&&idx%2===0&&SES.elapsed>=stepDur(cur)-1.5){ATEM.idx=idx;SES.elapsed=stepDur(cur);SES.atemAus=true;el.style.transform='scale(.55)';const we=document.getElementById('pacer-word');if(we)we.textContent='';stufeEnde();return;}
+  ATEM.idx=idx;const w=idx%2===0?'ein':'aus';
   el.style.transform=w==='ein'?'scale(1)':'scale(.55)';const wd=document.getElementById('pacer-word');if(wd)wd.textContent=w;atemSignal(w);}
 function schlaf(){if(NATIVE)nat('wach',false);if(WAKE){try{WAKE.release();}catch(e){}WAKE=null;}}
 let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLock&&!WAKE)navigator.wakeLock.request('screen').then(l=>{WAKE=l;l.addEventListener('release',()=>{WAKE=null;});}).catch(()=>{});}catch(e){}}
@@ -559,9 +561,11 @@ let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLo
 function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
 function startSession(typ,ctx,extra){ensureAudio();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');}
 function stepDur(s){return s.sek!=null?s.sek:s.min*secPerMin();}
+function stepFertig(x){return SES.elapsed>=stepDur(x)&&(!x.pacer||!!SES.atemAus);}
+function stufeEnde(){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}gong();render();}
 function stepLaeuft(s){return !!(s.pacer||s.blick||S.sim.faceDown);}
 function sesMinuten(){let m=0;SES.plan.forEach((x,i)=>{if(i<SES.i)m+=x.min;else if(i===SES.i)m+=Math.min(x.min,SES.elapsed/secPerMin());});return Math.round(m*10)/10;}
-function sesWeiter(){const s=SES;if(!s)return;if(s.i<s.plan.length-1){s.i++;s.elapsed=0;s.warm=s.typ==='schwelle'?0:warmDauer(s.plan[s.i],false);s.warmEl=0;s.last=Date.now();render();}else sesFertig();}
+function sesWeiter(){const s=SES;if(!s)return;if(s.i<s.plan.length-1){s.i++;s.elapsed=0;s.atemAus=false;s.warm=s.typ==='schwelle'?0:warmDauer(s.plan[s.i],false);s.warmEl=0;s.last=Date.now();render();}else sesFertig();}
 function sesFertig(){const s=SES;const at=hm(now());schlaf();
   if(s.typ==='schwelle'){SES=null;day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
   const min=sesMinuten();SES=null;
@@ -572,13 +576,13 @@ function tick(){
   if(SES){const dt=(t-SES.last)/1000;SES.last=t;
     if(ui.route==='session'&&SES.warm>0){SES.warmEl+=dt;const rest=SES.warm-SES.warmEl;if(rest<=0){SES.warm=0;SES.warmEl=0;ton(440,528,1.2,.12);render();return;}const wz=document.getElementById('s-zeit');if(wz)wz.textContent=String(Math.ceil(rest));const wr=document.getElementById('s-ring');if(wr)wr.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.warmEl/SES.warm)).toFixed(2));return;}
     if(ui.route==='session'){const s=SES.plan[SES.i];const dur=stepDur(s);
-      if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}gong();render();return;}}
+      if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur&&!s.pacer){stufeEnde();return;}}
       const z=document.getElementById('s-zeit');if(z)z.textContent=mmss(dur-SES.elapsed);const rg=document.getElementById('s-ring');if(rg)rg.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.elapsed/dur)).toFixed(2));
-      const stt=document.getElementById('s-status');if(stt)stt.innerHTML=sesStatus(s,SES.elapsed>=dur);}}
+      const stt=document.getElementById('s-status');if(stt)stt.innerHTML=sesStatus(s,stepFertig(s));}}
   if(REC){const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent='● '+mss((t-REC.start)/1000);live();}
   pacerTick();
 }
-function sesStatus(s,fertig){if(fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';if(s.pacer)return 'Folge dem Kreis oder der Begleitung.';if(s.blick)return 'Augen offen, das Display darf oben liegen.';return S.sim.faceDown?'<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten':'<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';}
+function sesStatus(s,fertig){if(fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';if(s.pacer)return SES&&SES.elapsed>=stepDur(s)?'Noch dieser Atemzug, dann der Gong.':'Folge dem Kreis oder der Begleitung.';if(s.blick)return 'Augen offen, das Display darf oben liegen.';return S.sim.faceDown?'<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten':'<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';}
 </script>
 <script>
 'use strict';
@@ -672,7 +676,7 @@ V.gate=()=>{const a=ampelAm();const plan=ankerPlan();const total=plan.reduce((s,
   (d&&d.anker?'<button type="button" class="btn" data-a="go" data-v="'+(!d.journal?'journal':'skala')+'">Weiter zum '+(!d.journal?'Journal':'Tagesskala')+'</button>':'<button type="button" class="btn" data-a="ankerStart">Praxis beginnen</button><p class="small muted" style="text-align:center">Oder den NFC-Aufkleber am Kissen berühren.</p>')+
   '<div class="row between"><button type="button" class="link quiet" data-a="telefon" style="text-decoration:none;display:flex;gap:8px;align-items:center">'+ICON.phone+'Telefon</button><button type="button" class="link quiet" data-a="go" data-v="notausgang">Notausgang</button></div></div>';};
 
-V.session=()=>{const s=SES;if(!s)return V.heute();const x=s.plan[s.i];const dur=stepDur(x);const fertig=s.elapsed>=dur;const letzter=s.i===s.plan.length-1;
+V.session=()=>{const s=SES;if(!s)return V.heute();const x=s.plan[s.i];const dur=stepDur(x);const fertig=stepFertig(x);const letzter=s.i===s.plan.length-1;
   const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);
   return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="sesAbbruch">Abbrechen</button><span class="small muted">'+esc(titel)+' · '+esc(PHASEN[S.phase].kurz)+'</span></div>'+
   '<ol class="steps" aria-label="Ablauf">'+s.plan.map((y,k)=>'<li class="step '+(k<s.i?'done':k===s.i?'cur':'')+'" '+(k===s.i?'aria-current="step"':'')+'><span class="sd"></span><span class="grow">'+esc(y.titel)+'</span><span class="muted" style="font-weight:400">'+(y.sek!=null?y.sek+' Sek.':y.min+' Min.')+'</span></li>').join('')+'</ol>'+
@@ -1179,7 +1183,7 @@ const A={
   tStamm:()=>{const n=now();const [h,m]=S.settings.stamm.zeit.split(':').map(Number);const tage=S.settings.stamm.tage.length?S.settings.stamm.tage:[dow(keyOf(n))];for(let i=0;i<8;i++){const d=new Date(n);d.setDate(d.getDate()+i);d.setHours(h,m,0,0);if(d>n&&tage.includes(dow(keyOf(d)))){setZeit(d);return;}}},
   tSonntag:()=>{const n=now();const d=new Date(n);d.setDate(d.getDate()+((6-dow(keyOf(n)))+7)%7);d.setHours(19,0,0,0);if(d<=n)d.setDate(d.getDate()+7);setZeit(d);},
   tEcht:()=>{S.sim.offset=0;save();go('auto');},
-  pFace:()=>{S.sim.faceDown=!S.sim.faceDown;save();if(ui.route==='session'){const x=SES&&SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,SES.elapsed>=stepDur(x));}renderPanel();},
+  pFace:()=>{S.sim.faceDown=!S.sim.faceDown;save();if(ui.route==='session'){const x=SES&&SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}renderPanel();},
   pDemo:()=>{S.settings.demo=!S.settings.demo;save();render();},
   pNfc:()=>{if(ui.route==='gate'){const d=peek(today());if(!d||!d.anker)startSession('anker','nfc');}else toast('Der Aufkleber startet den Morgenanker im Gate.');},
   pImpuls:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}const d=day();d.impulse.n++;save();ui.modal={typ:'impuls'};renderOverlay();},
@@ -1216,7 +1220,7 @@ let natPlanAlt='';
 function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begegnung,d=peek(today());const plan={angelegt:true,morgen:s.morgen,stamm:{aktiv:S.phase!=='probe',tage:s.stamm.tage,zeit:s.stamm.zeit},impulse:s.impulse,frage:ANKERFRAGE[S.phase][0],bimp:{n:b.impuls.n,von:b.impuls.von,bis:b.impuls.bis},schwellen:b.schwellen.filter(x=>x.typ==='zeit'&&x.zeit).map(x=>({id:x.id,name:x.name,zeit:x.zeit})),fertig:d&&(d.frei||(d.anker&&d.journal&&d.skala))?today():''};const j=JSON.stringify(plan);if(j!==natPlanAlt){natPlanAlt=j;nat('plan',j);}}
 function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
 window.punktNativ={
-  lage:b=>{S.sim.faceDown=!!b;if(ui.route==='session'&&SES){const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,SES.elapsed>=stepDur(x));}},
+  lage:b=>{S.sim.faceDown=!!b;if(ui.route==='session'&&SES){const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}},
   aktion:a=>{if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
   resume:()=>{nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
   zurueck:()=>{if(!S.created)return false;const o=document.getElementById('overlay');if(o&&o.innerHTML){const z=o.querySelector('[data-a="modalZu"]');if(z)z.click();return true;}if(ui.route==='session'||gateAktiv())return true;if(ui.route!=='heute'){go('heute');return true;}return false;}

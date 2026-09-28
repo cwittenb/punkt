@@ -258,6 +258,7 @@ class MainActivity : Activity() {
 
     /** Statusleiste und Navigationsleiste in der Farbe des Bildschirms. */
     fun leiste(farbe: Int, hell: Boolean) {
+        web.setBackgroundColor(farbe)
         window.statusBarColor = farbe
         window.navigationBarColor = farbe
         val maske = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or

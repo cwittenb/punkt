@@ -40,6 +40,9 @@ jobs:
             echo "SIGNIERT=1" >> "$GITHUB_ENV"
           fi
 
+      - name: Web-App einbauen
+        run: python3 tools/web.py
+
       - name: APK bauen
         env:
           PUNKT_SIGNING: ${{ secrets.PUNKT_SIGNING }}

@@ -68,3 +68,5 @@ app/src/main/java/de/punkt/app/
 ```
 
 Die Web-App erkennt die Hülle an `window.PunktNative` und läuft ohne sie unverändert im Browser.
+
+Die Web-App liegt einmal in `web/punkt.html`, identisch mit der Web-Version. `python3 tools/web.py` baut daraus `app/src/main/assets/web/index.html`: mit Dokumentgerüst und ohne Google Fonts. Die Build-Pipeline macht das vor jedem Build selbst.

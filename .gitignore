@@ -6,3 +6,5 @@ local.properties
 *.iml
 *.apk
 signing/punkt.jks
+# wird aus web/punkt.html erzeugt (tools/web.py)
+app/src/main/assets/web/index.html

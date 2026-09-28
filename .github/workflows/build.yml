@@ -28,11 +28,13 @@ jobs:
           PUNKT_SIGNING: ${{ secrets.PUNKT_SIGNING }}
         run: |
           if [ -z "$PUNKT_SIGNING" ]; then
-            echo "::error::Das Secret PUNKT_SIGNING fehlt. Anlegen unter Settings → Secrets and variables → Actions."
-            exit 1
+            echo "::warning::Das Secret PUNKT_SIGNING fehlt. Es entsteht nur ein Testbuild ohne Release."
+            echo "SIGNIERT=0" >> "$GITHUB_ENV"
+          else
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+              -in signing/punkt.jks.enc -out signing/punkt.jks -pass env:PUNKT_SIGNING
+            echo "SIGNIERT=1" >> "$GITHUB_ENV"
           fi
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
-            -in signing/punkt.jks.enc -out signing/punkt.jks -pass env:PUNKT_SIGNING
 
       - name: APK bauen
         env:
@@ -47,10 +49,11 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: punkt-apk
+          name: ${{ env.SIGNIERT == '1' && 'punkt-apk' || 'punkt-testbuild' }}
           path: punkt-*.apk
 
       - name: Release veröffentlichen
+        if: env.SIGNIERT == '1'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.${{ github.run_number }}

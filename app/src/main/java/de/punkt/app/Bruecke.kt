@@ -67,6 +67,19 @@ class Bruecke(private val a: MainActivity) {
     }
 
     @JavascriptInterface
+    fun appInfo(): Boolean {
+        a.runOnUiThread {
+            try {
+                a.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", a.packageName, null))
+                )
+            } catch (e: Exception) {
+            }
+        }
+        return true
+    }
+
+    @JavascriptInterface
     fun wach(an: Boolean): Boolean {
         a.wach(an)
         return true

@@ -49,7 +49,11 @@ class Bruecke(private val a: MainActivity) {
     fun gateAusGemeldet(): Boolean = Gate.ausGemeldet(a)
 
     @JavascriptInterface
-    fun gateStatus(): String = JSONObject().put("an", Gate.dienstAn(a)).toString()
+    fun gateStatus(): String = JSONObject()
+        .put("an", Gate.dienstAn(a))
+        .put("aktiv", Gate.aktiv(a))
+        .put("frei", Speicher.plan(a)?.optString("fertig") == Speicher.heute())
+        .toString()
 
     @JavascriptInterface
     fun gateEinstellungen(): Boolean {

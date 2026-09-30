@@ -319,7 +319,7 @@ const ICON={
 };
 
 /* ---------- Zustand ---------- */
-const STORE_KEY='gewahr-state-v1';
+const STORE_KEY='punkt-state-v1',ALT_KEY='gewahr-state-v1';
 function defaultState(){return{
   v:1,savedAt:0,created:null,phase:'probe',phaseStart:null,phase1Start:null,
   settings:{theme:'system',gateFrei:['com.tuya.smartlife'],morgen:5,stamm:{tage:[1,3],zeit:'12:30'},begleitung:'stumm',demo:!NATIVE,testmodus:false,impulse:14,namen:'',hauptKurz:false},
@@ -331,14 +331,14 @@ function mergeState(x){const d=defaultState();const o=Object.assign(d,x||{});o.s
   const xb=(x&&x.begegnung)||{};o.begegnung=Object.assign(defaultBeg(),xb);o.begegnung.impuls=Object.assign(defaultBeg().impuls,xb.impuls||{});
   Object.keys(o.days||{}).forEach(k=>{const d=o.days[k];if(!d.begeg)d.begeg=[];if(!d.schwellen)d.schwellen=[];if(!d.bimp)d.bimp={n:0,b:0};});return o;}
 let S=defaultState();
-try{const t=localStorage.getItem(STORE_KEY);if(t)S=mergeState(JSON.parse(t));}catch(e){}
+try{const t=localStorage.getItem(STORE_KEY)||localStorage.getItem(ALT_KEY);if(t)S=mergeState(JSON.parse(t));}catch(e){}
 if(NATIVE){try{const t=nat('zustandLaden');if(t){const n=mergeState(JSON.parse(t));if((n.savedAt||0)>(S.savedAt||0))S=n;}}catch(e){}}
 if(NATIVE&&S.sim.offset)S.sim.offset=0;
 let DBREF=null,STORE=NATIVE?'Handy':'Browser',SAMPLE=null,DOWNLOADS=null,saveTimer=null;
 function save(){
   S.savedAt=Date.now();
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}
-  if(NATIVE){clearTimeout(natTimer);natTimer=setTimeout(()=>{nat('zustandSichern',JSON.stringify(S));if(typeof nativePlan==='function')nativePlan();},500);}
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(S));localStorage.removeItem(ALT_KEY);}catch(e){}
+  if(NATIVE){clearTimeout(natTimer);natTimer=setTimeout(()=>{natTimer=null;nat('zustandSichern',JSON.stringify(S));if(typeof nativePlan==='function')nativePlan();},500);}
   if(DBREF){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{
     const body=JSON.parse(JSON.stringify(S));
     DBREF.set(body).catch(e=>{if(e&&e.code==='invalid_argument')toast('Der Kontospeicher ist voll. Exportiere ein Backup und setze die Testdaten zurück.');});
@@ -564,7 +564,7 @@ function offenKarte(){const g=ui.sesOffen;if(!g)return '';const s=g.s,x=s.plan[s
 function sesMerken(){try{if(SES&&SES.typ!=='schwelle')localStorage.setItem(SES_KEY,JSON.stringify({s:SES,at:Date.now()}));else localStorage.removeItem(SES_KEY);}catch(e){}ui.sesGemerkt=Date.now();}
 function plog(t){if(typeof NATIVE!=='undefined'&&NATIVE)nat('log',String(t));}
 function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
-function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');sesMerken();plog('Übung gestartet: '+typ);}
+function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;tickAn();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');sesMerken();plog('Übung gestartet: '+typ);}
 function stepDur(s){return s.sek!=null?s.sek:s.min*secPerMin();}
 function stepFertig(x){return SES.elapsed>=stepDur(x)&&(!x.pacer||!!SES.atemAus);}
 function stufeEnde(){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}gong();render();}
@@ -1078,7 +1078,7 @@ function render(){applyTheme();const app=document.getElementById('app');let r=ui
 function gateApps(){if(!ui.gateApps){try{ui.gateApps=JSON.parse(nat('apps')||'[]');}catch(e){ui.gateApps=[];}}return ui.gateApps;}
 function appName(p){const a=gateApps().find(x=>x.p===p);return a?a.n:p;}
 function gateFreiHtml(){const L=S.settings.gateFrei||[];return '<p class="lab" style="margin:0">Im Gate erlaubt</p><p class="xs muted" style="margin:0">Telefon, Kontakte, Uhr, Notruf und Einstellungen sind immer frei.</p><div class="row wrap">'+L.map(p=>'<button type="button" class="chip" data-a="gateFreiWeg" data-v="'+esc(p)+'" style="border:0;cursor:pointer" aria-label="'+esc(appName(p))+' entfernen">'+esc(appName(p))+' ×</button>').join('')+'<button type="button" class="chip purple" data-a="gateFreiNeu" style="border:0;cursor:pointer">+ App</button></div>';}
-function renderPanel(){const n=now();const c=document.getElementById('p-clock');if(c)c.textContent=WT[dow(keyOf(n))]+', '+n.getDate()+'. '+MON[n.getMonth()]+' · '+hm(n);
+function renderPanel(){if(NATIVE&&!S.settings.testmodus)return;const n=now();const c=document.getElementById('p-clock');if(c)c.textContent=WT[dow(keyOf(n))]+', '+n.getDate()+'. '+MON[n.getMonth()]+' · '+hm(n);
   const f=document.getElementById('p-face');if(f)f.checked=!!S.sim.faceDown;const dm=document.getElementById('p-demo');if(dm)dm.checked=!!S.settings.demo;
   const ph=document.getElementById('p-phase');if(ph&&document.activeElement!==ph)ph.value=S.phase;
   const pr=document.getElementById('p-runde');if(pr)pr.textContent=S.runde>1?'Erster Durchgang: abgeschlossen':'Erster Durchgang: läuft';
@@ -1124,7 +1124,7 @@ const A={
   sesWeiter:()=>sesWeiter(),
   warmSkip:()=>{if(SES){SES.warm=0;SES.warmEl=0;SES.last=Date.now();render();}},
   gateEinst:()=>{nat('gateEinstellungen');},
-  offenWeiter:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;SES.last=Date.now();SES.warm=warmDauer(SES.plan[SES.i],false);SES.warmEl=0;wach();go('session');sesMerken();plog('Übung fortgesetzt: '+SES.typ);},
+  offenWeiter:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;SES.last=Date.now();tickAn();SES.warm=warmDauer(SES.plan[SES.i],false);SES.warmEl=0;wach();go('session');sesMerken();plog('Übung fortgesetzt: '+SES.typ);},
   offenEnde:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;plog('Übung beendet nach Unterbrechung: '+SES.typ);sesFertig();},
   offenWeg:()=>{ui.sesOffen=null;try{localStorage.removeItem(SES_KEY);}catch(e){}plog('Unterbrochene Übung verworfen');render();toast('Verworfen.');},
   gateFreiNeu:()=>{ui.gateApps=null;ui.modal={typ:'gateApps'};ui.f.appSuche='';renderOverlay();},
@@ -1148,7 +1148,7 @@ const A={
   bImpulsJa:()=>{const d=day();d.bimp.b++;save();ui.modal=null;render();toast('Bemerkt. Weiter im Gespräch.');},
   bStufeZurueck:()=>{ui.lockern=()=>{S.begegnung.stufe=Math.max(1,bStufe()-1);S.begegnung.stufeAb=today();};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();},
   begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const wd=document.getElementById('pacer-word');atemSignal(wd&&wd.textContent?wd.textContent:'ein');if(ui.route==='session'&&SES){if(SES.warm>0)render();else{const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}}},
-  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};}rerender();},
+  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};tickAn();}rerender();},
   audioWeg:el=>{ui.f['aud_'+el.dataset.v]=0;rerender();},
   set:el=>{ui.f[el.dataset.k]=JSON.parse(el.dataset.v);rerender();},
   stich:el=>{const k=el.dataset.k;ui.f[k]=ui.f[k]===el.dataset.v?null:el.dataset.v;rerender();},
@@ -1241,7 +1241,9 @@ document.addEventListener('click',e=>{ensureAudio();const el=e.target.closest('[
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset&&el.dataset.f){ui.f[el.dataset.f]=el.value;if(el.dataset.f==='appSuche'){ui.appSucheFokus=true;renderOverlay();ui.appSucheFokus=false;return;}live();}});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.ch&&CH[el.dataset.ch])CH[el.dataset.ch](el);});
 document.getElementById('panelToggle').addEventListener('click',()=>{const p=document.getElementById('panel');const o=p.classList.toggle('open');document.getElementById('panelToggle').setAttribute('aria-expanded',o);document.getElementById('panelToggle').textContent=o?'Schließen':'Test';});
-setInterval(tick,200);
+let tickTimer=null;
+function tickAn(){if(!tickTimer)tickTimer=setInterval(tick,200);}
+setInterval(()=>{if(SES||REC)tickAn();else if(tickTimer){clearInterval(tickTimer);tickTimer=null;ui.lastPacer=false;}},1000);
 setInterval(()=>{if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
 setInterval(renderPanel,1000);
 let natPlanAlt='';
@@ -1250,11 +1252,11 @@ function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('
 window.punktNativ={
   lage:b=>{S.sim.faceDown=!!b;if(ui.route==='session'&&SES){const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}},
   aktion:a=>{plog('Aktion '+a+' auf '+ui.route);if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
-  hinten:()=>{plog('App im Hintergrund · '+ui.route);try{if(ACTX&&ACTX.state==='running')ACTX.suspend();}catch(e){}try{speechSynthesis.cancel();}catch(e){}},
+  hinten:()=>{plog('App im Hintergrund · '+ui.route);if(natTimer){clearTimeout(natTimer);natTimer=null;nat('zustandSichern',JSON.stringify(S));nativePlan();}try{if(ACTX&&ACTX.state==='running')ACTX.suspend();}catch(e){}try{speechSynthesis.cancel();}catch(e){}},
   resume:()=>{try{if(ACTX&&ACTX.state==='suspended')ACTX.resume();}catch(e){}plog('Zurück in der App · '+ui.route+(SES?' · Schritt '+(SES.i+1):''));nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
   zurueck:()=>{if(!S.created)return false;const o=document.getElementById('overlay');if(o&&o.innerHTML){const z=o.querySelector('[data-a="modalZu"]');if(z)z.click();return true;}if(ui.route==='session'){ui.modal={typ:'confirm',titel:'Übung beenden?',text:'Die Zeit bis hierher zählt nicht als Übung.',ok:'Beenden',nach:'sesAbbruch'};renderOverlay();return true;}if(gateAktiv())return true;if(ui.route!=='heute'){go('heute');return true;}return false;}
 };
-try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&S.created&&Date.now()-g.at<20*60000){SES=g.s;SES.last=Date.now();ui.route='session';wach();ui.sesWieder=true;}else if(g&&g.s&&S.created&&keyOf(new Date(g.at))===keyOf(new Date()))ui.sesOffen=g;else localStorage.removeItem(SES_KEY);}catch(e){}
+try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&S.created&&Date.now()-g.at<20*60000){SES=g.s;SES.last=Date.now();ui.route='session';wach();tickAn();ui.sesWieder=true;}else if(g&&g.s&&S.created&&keyOf(new Date(g.at))===keyOf(new Date()))ui.sesOffen=g;else localStorage.removeItem(SES_KEY);}catch(e){}
 render();
 initCaps();
 plog('Seite geladen · '+ui.route+(ui.sesWieder?' · Übung fortgesetzt':''));if(ui.sesWieder)toast('Übung fortgesetzt.');

@@ -16,12 +16,12 @@ class GateService : AccessibilityService() {
     private var zuletzt = 0L
     private val merk = HashMap<String, Boolean>()
     private var heim: String? = null
+    private var heimZeit = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         Speicher.prefs(this).edit().putBoolean("gateWarAn", true).apply()
         Protokoll.schreib(this, "Gate-Dienst verbunden")
-        heim = heimPaket()
     }
 
     override fun onAccessibilityEvent(e: AccessibilityEvent?) {
@@ -44,9 +44,19 @@ class GateService : AccessibilityService() {
 
     private fun sperren(pkg: String): Boolean {
         if (pkg in FREI || pkg in Gate.erlaubt(this)) return false
-        if (pkg == heim) return false
+        if (pkg == heimAktuell()) return false
         if (pkg == tastatur()) return false
         return merk.getOrPut(pkg) { packageManager.getLaunchIntentForPackage(pkg) != null }
+    }
+
+    /** Der Startbildschirm kann wechseln; höchstens einmal pro Minute neu nachsehen. */
+    private fun heimAktuell(): String? {
+        val t = SystemClock.elapsedRealtime()
+        if (heim == null || t - heimZeit > 60_000) {
+            heim = heimPaket()
+            heimZeit = t
+        }
+        return heim
     }
 
     private fun heimPaket(): String? = try {

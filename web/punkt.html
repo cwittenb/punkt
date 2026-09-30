@@ -475,7 +475,6 @@ const STUFE_NAME={gruen:'Grün',gelb:'Gelb',rot:'Rot'};
 function ampelAm(k){k=k||today();let cur={stufe:'gruen',grund:'',ab:null};for(const a of S.ampel)if(a.ab<=k)cur=a;return cur;}
 function setAmpel(stufe,ab,grund){S.ampel.push({stufe:stufe,ab:ab,grund:grund});S.ampel.sort((a,b)=>a.ab<b.ab?-1:a.ab>b.ab?1:0);}
 function erhoeheAmpel(stufe,grund){const m=addDays(today(),1);const cur=ampelAm(m);if(STUFE[stufe]>STUFE[cur.stufe]){setAmpel(stufe,m,grund);return true;}return false;}
-function passungInfo(){const ks=Object.keys(S.checks).sort();if(!ks.length)return null;const c=S.checks[ks[ks.length-1]];return{p:c.passung,datum:c.datum};}
 function letzterCheck(){const ks=Object.keys(S.checks).sort();return ks.length?S.checks[ks[ks.length-1]]:null;}
 function passungStatus(){const c=letzterCheck();const lauf=S.aenderungen.filter(a=>a.wirkung==='offen').slice(-1)[0];const laeuft=lauf?{label:'Änderung läuft: '+lauf.text,cls:'purple'}:null;
   if(!c||c.passung==='passt')return laeuft||{label:'Passung: passt',cls:'purple'};
@@ -562,10 +561,10 @@ let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLo
 const SES_KEY='punkt-ses';
 function offenKarte(){const g=ui.sesOffen;if(!g)return '';const s=g.s,x=s.plan[s.i]||s.plan[0];const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const m=Math.round(s.plan.slice(0,s.i).reduce((a,y)=>a+y.min,0)+Math.min(x.min,(s.elapsed||0)/secPerMin()));
   return '<section class="card hl"><span class="chip pink" style="align-self:flex-start">Unterbrochen um '+hm(new Date(g.at))+'</span><h2 class="h2">'+esc(titel)+'</h2><p class="soft small">Schritt '+(s.i+1)+' von '+s.plan.length+': '+esc(x.titel)+(m>0?' · '+m+' Min. geübt':'')+'</p><div class="btnrow"><button type="button" class="btn" data-a="offenWeiter">Fortsetzen</button>'+(m>0?'<button type="button" class="btn sec" data-a="offenEnde">Hier beenden</button>':'')+'</div><button type="button" class="link quiet" data-a="offenWeg" style="align-self:flex-start">Verwerfen</button></section>';}
-function sesMerken(){try{if(SES)localStorage.setItem(SES_KEY,JSON.stringify({s:SES,at:Date.now()}));else localStorage.removeItem(SES_KEY);}catch(e){}ui.sesGemerkt=Date.now();}
+function sesMerken(){try{if(SES&&SES.typ!=='schwelle')localStorage.setItem(SES_KEY,JSON.stringify({s:SES,at:Date.now()}));else localStorage.removeItem(SES_KEY);}catch(e){}ui.sesGemerkt=Date.now();}
 function plog(t){if(typeof NATIVE!=='undefined'&&NATIVE)nat('log',String(t));}
 function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
-function startSession(typ,ctx,extra){ensureAudio();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');sesMerken();plog('Übung gestartet: '+typ);}
+function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');sesMerken();plog('Übung gestartet: '+typ);}
 function stepDur(s){return s.sek!=null?s.sek:s.min*secPerMin();}
 function stepFertig(x){return SES.elapsed>=stepDur(x)&&(!x.pacer||!!SES.atemAus);}
 function stufeEnde(){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}gong();render();}
@@ -580,7 +579,7 @@ function sesFertig(){const s=SES;const at=hm(now());schlaf();try{localStorage.re
   const z=ui.zeit||{};const e={id:uid(),typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?(z.ort||null):(s.ctx==='stamm'?'arbeit':null),text:'',empfohlen:s.ctx==='zeit'&&z.top===s.typ};day().haupt.push(e);ui.nach=Object.assign({tag:today()},e);save();go('nach');}
 function tick(){
   const t=Date.now();
-  if(SES){const dt=(t-SES.last)/1000;SES.last=t;
+  if(SES){const dt=Math.min(2,(t-SES.last)/1000);SES.last=t;
     if(ui.route==='session'&&SES.warm>0){SES.warmEl+=dt;const rest=SES.warm-SES.warmEl;if(rest<=0){SES.warm=0;SES.warmEl=0;ton(440,528,1.2,.12);render();return;}const wz=document.getElementById('s-zeit');if(wz)wz.textContent=String(Math.ceil(rest));const wr=document.getElementById('s-ring');if(wr)wr.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.warmEl/SES.warm)).toFixed(2));return;}
     if(ui.route==='session'){const s=SES.plan[SES.i];const dur=stepDur(s);
       if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur&&!s.pacer){stufeEnde();return;}}
@@ -669,7 +668,7 @@ function passungChip(p){const m={passt:['purple','Passung: passt'],pruefen:['pin
 function ringHtml(inner,anteil,warm){return '<div class="ring-wrap'+(warm?' klein':'')+'"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="94" class="ring-bg"/><circle cx="100" cy="100" r="94" class="ring-fg'+(warm?' warm':'')+'" id="s-ring" pathLength="100" stroke-dasharray="100" stroke-dashoffset="'+(100-100*Math.min(1,anteil||0)).toFixed(2)+'"/></svg><div class="ring-in">'+inner+'</div></div>';}
 function warmHinweis(x){if(x.gehen)return 'Lies in Ruhe, dann steck das Handy ein. Die Zeit läuft nach dem Ton.';if(!brauchtLage(x))return x.pacer?'Setz dich zurecht, der Kreis führt den Atem. Mit Ton oder Stimme kannst du das Handy weglegen.':'Lies in Ruhe. Die Übung beginnt nach dem Ton.';if(x.pacer)return 'Leg das Handy mit dem Display nach unten. '+(S.settings.begleitung==='ton'?'Der Ton':'Die Stimme')+' führt den Atem, die Zeit läuft nach dem Ton.';return 'Lies in Ruhe, dann leg das Handy mit dem Display nach unten. Die Zeit läuft nach dem Ton.';}
 function begleitSeg(){const b=S.settings.begleitung;return '<div class="seg" role="group" aria-label="Atembegleitung" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(b===x[0]?'on':'')+'" aria-pressed="'+(b===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';}
-function pacerHtml(anteil){const b=S.settings.begleitung;const kreis='<div class="pacer" id="pacer" aria-hidden="true" style="transform:scale(.55)"></div>';return (anteil!=null?ringHtml(kreis,anteil):'<div class="pacer-wrap">'+kreis+'</div>')+'<p class="pacer-word" id="pacer-word" aria-hidden="true"></p><div class="seg" role="group" aria-label="Atembegleitung" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(b===x[0]?'on':'')+'" aria-pressed="'+(b===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';}
+function pacerHtml(anteil){const kreis='<div class="pacer" id="pacer" aria-hidden="true" style="transform:scale(.55)"></div>';return (anteil!=null?ringHtml(kreis,anteil):'<div class="pacer-wrap">'+kreis+'</div>')+'<p class="pacer-word" id="pacer-word" aria-hidden="true"></p>'+begleitSeg();}
 
 /* ---------- Ansichten ---------- */
 const V={};
@@ -1202,7 +1201,7 @@ const A={
   eKurz:el=>{const an=!S.settings.hauptKurz;if(an){ui.lockern=()=>{S.settings.hauptKurz=true;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{S.settings.hauptKurz=false;save();render();}},
   phaseZurueck:()=>{if(S.phase==='probe')return;wechsleZurueck(today());save();render();toast('Jetzt: '+PHASEN[S.phase].name);},
   stammUebernehmen:()=>{const v=stammVorschlag();if(v){S.settings.stamm={tage:v.tage.sort(),zeit:v.zeit};save();toast('Stammfenster: '+v.tage.map(t=>WT[t]).join(', ')+' '+v.zeit);}},
-  confirmOk:()=>{const m=ui.modal;ui.modal=null;if(m.nach==='sesAbbruch'){renderOverlay();A.sesAbbruch();return;}if(m.ok==='Zurücksetzen'){const keep=S.sim;S=defaultState();S.sim=keep;SES=null;save();go('auto');toast('Alles zurückgesetzt.');}else if(m.daten){S=mergeState(m.daten);save();go('auto');toast('Backup eingespielt.');}},
+  confirmOk:()=>{const m=ui.modal;ui.modal=null;if(m.nach==='sesAbbruch'){renderOverlay();A.sesAbbruch();return;}if(m.art==='reset'){const keep=S.sim;S=defaultState();S.sim=keep;SES=null;save();go('auto');toast('Alles zurückgesetzt.');}else if(m.art==='import'&&m.daten){S=mergeState(m.daten);save();go('auto');toast('Backup eingespielt.');}},
   impulsJa:()=>{const d=day();d.impulse.b++;save();ui.modal.bemerkt=true;renderOverlay();},
   // Testpanel
   tMorgen:()=>setZeit(nachstMorgen()),
@@ -1222,7 +1221,7 @@ const A={
   pBeispiel:()=>beispielwoche(),
   pRunde:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}if(S.phase==='probe'){S.phase='1';S.phaseStart=today();if(!S.phase1Start)S.phase1Start=today();}S.runde=S.runde>1?1:2;save();go('auto');toast(S.runde>1?'Erster Durchgang abgeschlossen: Spirale aktiv.':'Zurück im ersten Durchgang.');},
   pWoche:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}if(gateAktiv()){toast('Erst das Morgen-Gate abschließen.');return;}wcStart();},
-  pReset:()=>{ui.modal={typ:'confirm',titel:'Alles zurücksetzen?',text:'Alle Testdaten, Einstellungen und Wochenchecks werden gelöscht.',ok:'Zurücksetzen'};renderOverlay();},
+  pReset:()=>{ui.modal={typ:'confirm',art:'reset',titel:'Alles zurücksetzen?',text:'Alle Testdaten, Einstellungen und Wochenchecks werden gelöscht.',ok:'Zurücksetzen'};renderOverlay();},
   panelToggle:()=>{}
 };
 function rerender(){const a=document.getElementById('app');const top=a?a.scrollTop:0;if(ui.modal){renderOverlay();}else{render();}if(a)a.scrollTop=top;}
@@ -1236,14 +1235,14 @@ const CH={
   eBImp:el=>{const v=Number(el.value);const bi=S.begegnung.impuls;if(v<bi.n){ui.lockern=()=>{S.begegnung.impuls.n=v;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{bi.n=v;save();render();}},
   eBVon:el=>{S.begegnung.impuls.von=Number(el.value);save();},
   eBBis:el=>{S.begegnung.impuls.bis=Number(el.value);save();},
-  eImport:el=>{const file=el.files&&el.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||typeof d.days!=='object')throw 0;ui.modal={typ:'confirm',titel:'Backup einspielen?',text:'Die aktuellen Testdaten werden durch das Backup ersetzt.',ok:'Einspielen',daten:d};renderOverlay();}catch(e){toast('Die Datei ist kein gültiges Backup.');}};r.readAsText(file);el.value='';}
+  eImport:el=>{const file=el.files&&el.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||typeof d.days!=='object')throw 0;ui.modal={typ:'confirm',art:'import',titel:'Backup einspielen?',text:'Die aktuellen Testdaten werden durch das Backup ersetzt.',ok:'Einspielen',daten:d};renderOverlay();}catch(e){toast('Die Datei ist kein gültiges Backup.');}};r.readAsText(file);el.value='';}
 };
 document.addEventListener('click',e=>{ensureAudio();const el=e.target.closest('[data-a]');if(!el)return;const fn=A[el.dataset.a];if(!fn)return;if(el.tagName==='INPUT'&&el.type==='checkbox'){fn(el);return;}e.preventDefault();fn(el);});
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset&&el.dataset.f){ui.f[el.dataset.f]=el.value;if(el.dataset.f==='appSuche'){ui.appSucheFokus=true;renderOverlay();ui.appSucheFokus=false;return;}live();}});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.ch&&CH[el.dataset.ch])CH[el.dataset.ch](el);});
 document.getElementById('panelToggle').addEventListener('click',()=>{const p=document.getElementById('panel');const o=p.classList.toggle('open');document.getElementById('panelToggle').setAttribute('aria-expanded',o);document.getElementById('panelToggle').textContent=o?'Schließen':'Test';});
 setInterval(tick,200);
-setInterval(()=>{renderPanel();if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
+setInterval(()=>{if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
 setInterval(renderPanel,1000);
 let natPlanAlt='';
 function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begegnung,echt=keyOf(new Date()),d=peek(echt);const plan={angelegt:true,morgen:s.morgen,stamm:{aktiv:S.phase!=='probe',tage:s.stamm.tage,zeit:s.stamm.zeit},impulse:s.impulse,frage:ANKERFRAGE[S.phase][0],hinweis:ANKERFRAGE[S.phase][1],erlaubt:(s.gateFrei||[]).map(x=>typeof x==='string'?x:x.p),bimp:{n:b.impuls.n,von:b.impuls.von,bis:b.impuls.bis},schwellen:b.schwellen.filter(x=>x.typ==='zeit'&&x.zeit).map(x=>({id:x.id,name:x.name,zeit:x.zeit})),fertig:d&&(d.frei||(d.anker&&d.journal&&d.skala))?echt:''};const j=JSON.stringify(plan);if(j!==natPlanAlt){natPlanAlt=j;nat('plan',j);}}

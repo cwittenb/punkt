@@ -169,6 +169,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         istVorne = false
         Protokoll.schreib(this, "im Hintergrund")
+        if (geladen) web.evaluateJavascript("window.punktNativ&&window.punktNativ.hinten&&window.punktNativ.hinten()", null)
         super.onPause()
     }
 
@@ -179,7 +180,6 @@ class MainActivity : Activity() {
 
     // Im Hintergrund schweigt die Begleitung; die Web-Oberfläche meldet sich als verborgen
     override fun onStop() {
-        if (geladen) web.evaluateJavascript("window.punktNativ&&window.punktNativ.hinten&&window.punktNativ.hinten()", null)
         tts?.stop()
         web.onPause()
         super.onStop()

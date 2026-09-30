@@ -560,6 +560,8 @@ let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLo
 
 /* ---------- Sessions ---------- */
 const SES_KEY='punkt-ses';
+function offenKarte(){const g=ui.sesOffen;if(!g)return '';const s=g.s,x=s.plan[s.i]||s.plan[0];const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const m=Math.round(s.plan.slice(0,s.i).reduce((a,y)=>a+y.min,0)+Math.min(x.min,(s.elapsed||0)/secPerMin()));
+  return '<section class="card hl"><span class="chip pink" style="align-self:flex-start">Unterbrochen um '+hm(new Date(g.at))+'</span><h2 class="h2">'+esc(titel)+'</h2><p class="soft small">Schritt '+(s.i+1)+' von '+s.plan.length+': '+esc(x.titel)+(m>0?' · '+m+' Min. geübt':'')+'</p><div class="btnrow"><button type="button" class="btn" data-a="offenWeiter">Fortsetzen</button>'+(m>0?'<button type="button" class="btn sec" data-a="offenEnde">Hier beenden</button>':'')+'</div><button type="button" class="link quiet" data-a="offenWeg" style="align-self:flex-start">Verwerfen</button></section>';}
 function sesMerken(){try{if(SES)localStorage.setItem(SES_KEY,JSON.stringify({s:SES,at:Date.now()}));else localStorage.removeItem(SES_KEY);}catch(e){}ui.sesGemerkt=Date.now();}
 function plog(t){if(typeof NATIVE!=='undefined'&&NATIVE)nat('log',String(t));}
 function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
@@ -575,7 +577,7 @@ function sesFertig(){const s=SES;const at=hm(now());schlaf();try{localStorage.re
   if(s.typ==='schwelle'){SES=null;day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
   const min=sesMinuten();SES=null;
   if(s.typ==='anker'){day().anker={min:min,variante:ampelAm().stufe,at:at};save();go('journal');return;}
-  ui.nach={typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?ui.zeit.ort:(s.ctx==='stamm'?'arbeit':null),empfohlen:s.ctx==='zeit'&&ui.zeit.top===s.typ};save();go('nach');}
+  const z=ui.zeit||{};const e={id:uid(),typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?(z.ort||null):(s.ctx==='stamm'?'arbeit':null),text:'',empfohlen:s.ctx==='zeit'&&z.top===s.typ};day().haupt.push(e);ui.nach=Object.assign({tag:today()},e);save();go('nach');}
 function tick(){
   const t=Date.now();
   if(SES){const dt=(t-SES.last)/1000;SES.last=t;
@@ -680,6 +682,7 @@ V.gate=()=>{const a=ampelAm();const plan=ankerPlan();const total=plan.reduce((s,
   let ampelBox='';
   if(a.stufe==='gruen')ampelBox='<div class="row small"><span class="dot gruen"></span><span><strong>Ampel grün</strong> · Plan läuft wie vorgesehen</span></div>';
   else ampelBox='<div class="card ampelbox '+a.stufe+'"><div class="row"><span class="dot '+a.stufe+'"></span><strong>Ampel '+STUFE_NAME[a.stufe].toLowerCase()+'</strong></div><p class="soft small">'+esc(a.grund)+(a.stufe==='rot'?'. Selbstergründung pausiert. Sprich diese Woche mit deinem Lehrer oder einer Kollegin.':'. Heute die erdende Variante.')+'</p></div>';
+  if(ui.sesOffen&&ui.sesOffen.s.typ==='anker'&&!(d&&d.anker))return '<div class="scr night"><div class="row between small muted"><span>'+fmtDay(today())+'</span><span>'+esc(phaseLabel())+'</span></div><div class="col"><h1 class="h1">Erst die Praxis.</h1></div>'+offenKarte()+'</div>';
   return '<div class="scr night"><div class="row between small muted"><span>'+fmtDay(today())+'</span><span>'+esc(phaseLabel())+'</span></div>'+
   '<div class="col"><h1 class="h1">Erst die Praxis.</h1><p class="lead">Das Handy wird frei, sobald Praxis, Journal und Tagesskala erledigt sind.</p></div>'+ampelBox+
   '<section class="card grow" aria-label="Übung heute"><span class="eyebrow">Heute</span><h2 class="h2">'+(a.stufe==='rot'?'Erdungsübung':a.stufe==='gelb'?'Morgenanker, erdend':'Morgenanker')+'</h2><div class="row wrap"><span class="chip">'+total+' Min.</span><span class="chip">'+plan.map(x=>x.titel).join(' · ')+'</span></div><p class="soft">'+esc(haupt.text)+'</p>'+
@@ -706,10 +709,12 @@ V.skala=()=>{const d=day();if(d.skala&&!ui.f._init){ITEMS.forEach(i=>{ui.f['sk_'
 
 V.heute=()=>{const T=today(),d=peek(T),n=now(),a=ampelAm(),pi=phaseInfo();const vor=n.getHours()<S.settings.morgen&&!(d&&d.frei);
   let h1,sub;
-  if(vor){h1='Guten Morgen.';sub='Das Morgenfenster beginnt um '+S.settings.morgen+' Uhr.';}
+  if(ui.sesOffen){h1='Eine Übung ist noch offen.';sub='';}
+  else if(vor){h1='Guten Morgen.';sub='Das Morgenfenster beginnt um '+S.settings.morgen+' Uhr.';}
   else if(d&&d.notausgang){h1='Heute ausgelassen.';sub='Frei bis morgen, '+S.settings.morgen+' Uhr. Dein Satz geht in den Wochencheck ein.';}
   else{h1='Frei für heute.';sub=[d&&d.anker?'Anker geübt':null,d&&d.journal?'Journal geschrieben':null,d&&d.skala?'Skala ausgefüllt':null].filter(Boolean).join(' · ');}
   const cards=[];
+  if(ui.sesOffen&&ui.sesOffen.s.typ!=='anker')cards.push(offenKarte());
   if(NATIVE){let g={};try{g=JSON.parse(nat('gateStatus')||'{}');}catch(e){}if(g.an===false)cards.push('<button type="button" class="chip pink" data-a="go" data-v="einst" style="border:0;cursor:pointer;align-self:flex-start">Morgen-Gate ist aus · einrichten</button>');}
   const sw=!vor&&S.created?faelligeSchwelle():null;
   if(sw)cards.push('<section class="card hl"><span class="chip pink" style="align-self:flex-start">Schwelle '+esc(sw.zeit)+'</span><h2 class="h2">'+esc(sw.name)+'</h2><p class="small muted">30 Sekunden, bevor es losgeht.</p><button type="button" class="btn small" data-a="swAnker" data-v="'+esc(sw.id)+'">Anker</button></section>');
@@ -1120,6 +1125,9 @@ const A={
   sesWeiter:()=>sesWeiter(),
   warmSkip:()=>{if(SES){SES.warm=0;SES.warmEl=0;SES.last=Date.now();render();}},
   gateEinst:()=>{nat('gateEinstellungen');},
+  offenWeiter:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;SES.last=Date.now();SES.warm=warmDauer(SES.plan[SES.i],false);SES.warmEl=0;wach();go('session');sesMerken();plog('Übung fortgesetzt: '+SES.typ);},
+  offenEnde:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;plog('Übung beendet nach Unterbrechung: '+SES.typ);sesFertig();},
+  offenWeg:()=>{ui.sesOffen=null;try{localStorage.removeItem(SES_KEY);}catch(e){}plog('Unterbrochene Übung verworfen');render();toast('Verworfen.');},
   gateFreiNeu:()=>{ui.gateApps=null;ui.modal={typ:'gateApps'};ui.f.appSuche='';renderOverlay();},
   gateFreiWahl:el=>{const L=S.settings.gateFrei||(S.settings.gateFrei=[]);if(!L.includes(el.dataset.v))L.push(el.dataset.v);ui.modal=null;save();render();toast(appName(el.dataset.v)+' ist im Gate erlaubt.');},
   gateFreiWeg:el=>{S.settings.gateFrei=(S.settings.gateFrei||[]).filter(x=>x!==el.dataset.v);save();render();},
@@ -1155,7 +1163,7 @@ const A={
   uebung:el=>{const id=el.dataset.v;if(id==='schatten'){A.schattenStart();return;}startSession(id,el.dataset.ctx||'heute');},
   empfStart:el=>{const id=el.dataset.v;if(id==='schatten'){A.schattenStart();return;}startSession(id,'zeit');},
   zeitSet:el=>{const k=el.dataset.k;ui.zeit[k]=k==='t'?Number(el.dataset.v):el.dataset.v;render();},
-  nachOk:()=>{stopRec();const n=ui.nach;const e={typ:n.typ,min:n.min,at:n.at,ort:ui.f.ort||n.ort||null,text:(ui.f.nt||'').trim(),empfohlen:!!n.empfohlen};if(S.phase==='probe'&&n.typ==='haupt'){e.gestoert=ui.f.gestoert;e.qualitaet=ui.f.qual;}day().haupt.push(e);ui.nach=null;save();go('heute');toast('Gespeichert.');},
+  nachOk:()=>{stopRec();const n=ui.nach;const L=day(n.tag||today()).haupt;let e=n.id?L.find(x=>x.id===n.id):null;if(!e){e={id:uid(),typ:n.typ,min:n.min,at:n.at,empfohlen:!!n.empfohlen};L.push(e);}e.ort=ui.f.ort||n.ort||null;e.text=(ui.f.nt||'').trim();if(S.phase==='probe'&&n.typ==='haupt'){e.gestoert=ui.f.gestoert;e.qualitaet=ui.f.qual;}ui.nach=null;save();go('heute');toast('Gespeichert.');},
   stammSkip:()=>{ui.modal={typ:'begr',anlass:'haupt_ausgelassen',uebung:'haupt',then:'stammSkip'};ui.f={};renderOverlay();},
   mbOk:()=>{const m=ui.modal||{typ:'begr',anlass:S.pending.anlass,then:'gateAus'};const d=day();d.begr.push({id:uid(),anlass:m.anlass,uebung:m.uebung||null,text:(ui.f.mb||'').trim(),stichwort:ui.f.mbStich||null,at:hm(now())});
     if(m.then==='stammSkip')d.stammSkip=true;if(m.then==='gateAus')S.pending=null;if(m.then==='lockern'&&ui.lockern){ui.lockern();ui.lockern=null;}
@@ -1247,7 +1255,7 @@ window.punktNativ={
   resume:()=>{try{if(ACTX&&ACTX.state==='suspended')ACTX.resume();}catch(e){}plog('Zurück in der App · '+ui.route+(SES?' · Schritt '+(SES.i+1):''));nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
   zurueck:()=>{if(!S.created)return false;const o=document.getElementById('overlay');if(o&&o.innerHTML){const z=o.querySelector('[data-a="modalZu"]');if(z)z.click();return true;}if(ui.route==='session'){ui.modal={typ:'confirm',titel:'Übung beenden?',text:'Die Zeit bis hierher zählt nicht als Übung.',ok:'Beenden',nach:'sesAbbruch'};renderOverlay();return true;}if(gateAktiv())return true;if(ui.route!=='heute'){go('heute');return true;}return false;}
 };
-try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&S.created&&Date.now()-g.at<20*60000){SES=g.s;SES.last=Date.now();ui.route='session';wach();ui.sesWieder=true;}else localStorage.removeItem(SES_KEY);}catch(e){}
+try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&S.created&&Date.now()-g.at<20*60000){SES=g.s;SES.last=Date.now();ui.route='session';wach();ui.sesWieder=true;}else if(g&&g.s&&S.created&&keyOf(new Date(g.at))===keyOf(new Date()))ui.sesOffen=g;else localStorage.removeItem(SES_KEY);}catch(e){}
 render();
 initCaps();
 plog('Seite geladen · '+ui.route+(ui.sesWieder?' · Übung fortgesetzt':''));if(ui.sesWieder)toast('Übung fortgesetzt.');

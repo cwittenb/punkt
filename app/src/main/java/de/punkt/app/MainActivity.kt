@@ -172,12 +172,35 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    override fun onStart() {
+        super.onStart()
+        web.onResume()
+    }
+
+    // Im Hintergrund schweigt die Begleitung; die Web-Oberfläche meldet sich als verborgen
+    override fun onStop() {
+        if (geladen) web.evaluateJavascript("window.punktNativ&&window.punktNativ.hinten&&window.punktNativ.hinten()", null)
+        tts?.stop()
+        web.onPause()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         Protokoll.schreib(this, "App beendet" + (if (isFinishing) " (geschlossen)" else "") + (if (isChangingConfigurations) " (Konfiguration)" else ""))
         wach(false)
         recorder.stopp()
         tts?.shutdown()
         tts = null
+        // Die Web-Oberfläche wirklich beenden: Der Prozess lebt wegen des Gate-Dienstes weiter,
+        // sonst liefen Takt und Begleitung ohne Bildschirm weiter.
+        try {
+            web.removeJavascriptInterface("PunktNative")
+            web.stopLoading()
+            web.loadUrl("about:blank")
+            (web.parent as? android.view.ViewGroup)?.removeView(web)
+            web.destroy()
+        } catch (e: Exception) {
+        }
         super.onDestroy()
     }
 

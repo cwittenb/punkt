@@ -43,7 +43,7 @@ class GateService : AccessibilityService() {
     }
 
     private fun sperren(pkg: String): Boolean {
-        if (pkg in FREI) return false
+        if (pkg in FREI || pkg in Gate.erlaubt(this)) return false
         if (pkg == heim) return false
         if (pkg == tastatur()) return false
         return merk.getOrPut(pkg) { packageManager.getLaunchIntentForPackage(pkg) != null }
@@ -81,7 +81,9 @@ class GateService : AccessibilityService() {
             // System
             "com.android.systemui", "android", "com.android.permissioncontroller",
             "com.google.android.permissioncontroller", "com.sec.android.app.launcher",
-            "com.google.android.apps.nexuslauncher"
+            "com.google.android.apps.nexuslauncher",
+            // Smart Home: Licht und Wecker am Morgen
+            "com.tuya.smartlife"
         )
     }
 }

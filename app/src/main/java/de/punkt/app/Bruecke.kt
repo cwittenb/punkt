@@ -148,6 +148,29 @@ class Bruecke(private val a: MainActivity) {
     @JavascriptInterface
     fun dunkel(): Boolean = a.dunkel()
 
+    /** Installierte Apps mit Startsymbol, für die Auswahl „Im Gate erlaubt“. */
+    @JavascriptInterface
+    fun apps(): String {
+        val pm = a.packageManager
+        val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val arr = org.json.JSONArray()
+        @Suppress("DEPRECATION")
+        pm.queryIntentActivities(i, 0)
+            .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+            .filter { it.first != a.packageName }
+            .distinctBy { it.first }
+            .sortedBy { it.second.lowercase() }
+            .forEach { arr.put(JSONObject().put("p", it.first).put("n", it.second)) }
+        return arr.toString()
+    }
+
+    /** Kurz vibrieren, wenn der Gong im Hintergrund nicht zu hören ist. */
+    @JavascriptInterface
+    fun summen(): Boolean {
+        Notif.summen(a, "praxis")
+        return true
+    }
+
     @JavascriptInterface
     fun log(text: String): Boolean {
         Protokoll.schreib(a, "Web: " + text.take(300))

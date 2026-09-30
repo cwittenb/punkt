@@ -85,6 +85,12 @@ object Gate {
         return p.optString("fertig") != Speicher.heute()
     }
 
+    /** Apps, die der Nutzer im Gate erlaubt hat. */
+    fun erlaubt(ctx: Context): Set<String> {
+        val a = Speicher.plan(ctx)?.optJSONArray("erlaubt") ?: return emptySet()
+        return (0 until a.length()).mapNotNull { a.optString(it).ifEmpty { null } }.toSet()
+    }
+
     fun dienstAn(ctx: Context): Boolean {
         val s = Settings.Secure.getString(
             ctx.contentResolver,

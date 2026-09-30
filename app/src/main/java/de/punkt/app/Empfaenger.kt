@@ -26,12 +26,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val gate = Gate.aktiv(ctx)
         when (t.art) {
             "imp" -> {
-                if (Laufzeit.wach || gate) return
+                if (Laufzeit.wach) return
                 Speicher.zaehlen(ctx, "imp")
                 melden(ctx, "impuls", Notif.ID_IMPULS, p.optString("frage", "Bin ich gewahr?"), p.optString("hinweis").ifEmpty { null }, "impuls", 45)
             }
             "bimp" -> {
-                if (Laufzeit.wach || gate) return
+                if (Laufzeit.wach) return
                 Speicher.zaehlen(ctx, "bimp")
                 melden(ctx, "still", Notif.ID_STILL, ".", null, "bimpuls", 30)
             }

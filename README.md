@@ -38,7 +38,7 @@ Updates: neue APK aus Releases laden und darüber installieren. Die Daten bleibe
 
 ## Was das Gate frei lässt
 
-Telefon, Kontakte, Uhr, Notruf, Einstellungen, Startbildschirm und Tastatur. Wird die Bedienungshilfe abgeschaltet, fragt die App beim nächsten Öffnen nach einem Satz dazu.
+Telefon, Kontakte, Uhr, Notruf, Einstellungen, Startbildschirm, Tastatur und Smart Life. Weitere Apps lassen sich in den Optionen unter „Im Gate erlaubt“ hinzufügen. Wird die Bedienungshilfe abgeschaltet, fragt die App beim nächsten Öffnen nach einem Satz dazu.
 
 ## Zeiten
 

@@ -44,7 +44,8 @@ Telefon, Kontakte, Uhr, Notruf, Einstellungen, Startbildschirm, Tastatur und Sma
 
 - Tagesimpulse: verteilt zwischen 8 Uhr (frühestens drei Stunden nach der Morgenstunde) und 21 Uhr
 - Stille Impulse: im Fenster aus den Begegnungs-Einstellungen
-- Während einer Übung und solange das Gate offen ist, kommen keine Impulse
+- Während einer Übung kommen keine Impulse
+- Alle Impulse vibrieren als Wecker-Vibration, auch im Lautlos-Modus
 
 ## Bauen
 

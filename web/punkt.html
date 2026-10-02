@@ -546,11 +546,13 @@ function ensureAudio(){try{const C=window.AudioContext||window.webkitAudioContex
 function ton(f1,f2,dauer,vol){if(!ACTX)return;try{const t=ACTX.currentTime,o=ACTX.createOscillator(),g=ACTX.createGain();o.type='sine';o.frequency.setValueAtTime(f1,t);o.frequency.linearRampToValueAtTime(f2,t+.6);g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+.06);g.gain.exponentialRampToValueAtTime(.0001,t+dauer);o.connect(g);g.connect(ACTX.destination);o.start(t);o.stop(t+dauer+.1);}catch(e){}}
 function gong(){if(document.hidden&&NATIVE)nat('summen');ton(392,392,2.6,.18);setTimeout(()=>ton(588,588,2.2,.07),40);}
 function sprich(w){if(NATIVE&&nat('sprich',w))return;try{const u=new SpeechSynthesisUtterance(w);u.lang='de-DE';u.rate=.8;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
-function atemSignal(w){if(document.hidden)return;const m=S.settings.begleitung;if(m==='ton')ton(w==='ein'?396:528,w==='ein'?528:396,1.4,.15);else if(m==='stimme')sprich(w);}
-const ATEM={epoch:0,idx:-1};
+function atemSignal(w){if(document.hidden)return;const m=S.settings.begleitung;if(m==='ton')ton(w==='ein'?396:528,w==='ein'?528:396,4.6,.11);else if(m==='stimme')sprich(w);}
+function cur0(){return ui.route==='session'&&SES&&SES.warm<=0?SES.plan[SES.i]:null;}
+const ATEM={epoch:0,idx:-1,letzt:0};
 function pacerTick(){const el=document.getElementById('pacer');if(!el){ui.lastPacer=false;return;}
-  if(!ui.lastPacer){ui.lastPacer=true;ATEM.epoch=Date.now();ATEM.idx=-1;}
-  const idx=Math.floor((Date.now()-ATEM.epoch)/5000);const cur=ui.route==='session'&&SES&&SES.warm<=0?SES.plan[SES.i]:null;if(cur&&cur.pacer&&SES.atemAus)return;if(idx===ATEM.idx)return;
+  if(!ui.lastPacer){ui.lastPacer=true;ATEM.epoch=Date.now()+1500;ATEM.idx=-1;ATEM.letzt=Date.now();}
+  {const jetzt=Date.now();if(cur0()&&!stepLaeuft(cur0())){ATEM.epoch+=jetzt-ATEM.letzt;ATEM.letzt=jetzt;return;}ATEM.letzt=jetzt;}
+  const idx=Math.floor((Date.now()-ATEM.epoch)/5000);if(idx<0)return;const cur=cur0();if(cur&&cur.pacer&&SES.atemAus)return;if(idx===ATEM.idx)return;
   if(cur&&cur.pacer&&idx>0&&idx%2===0&&SES.elapsed>=stepDur(cur)-1.5){ATEM.idx=idx;SES.elapsed=stepDur(cur);SES.atemAus=true;el.style.transform='scale(.55)';const we=document.getElementById('pacer-word');if(we)we.textContent='';stufeEnde();return;}
   ATEM.idx=idx;const w=idx%2===0?'ein':'aus';
   el.style.transform=w==='ein'?'scale(1)':'scale(.55)';const wd=document.getElementById('pacer-word');if(wd)wd.textContent=w;atemSignal(w);}
@@ -580,7 +582,7 @@ function sesFertig(){const s=SES;const at=hm(now());schlaf();try{localStorage.re
 function tick(){
   const t=Date.now();
   if(SES){const dt=Math.min(2,(t-SES.last)/1000);SES.last=t;
-    if(ui.route==='session'&&SES.warm>0){SES.warmEl+=dt;const rest=SES.warm-SES.warmEl;if(rest<=0){SES.warm=0;SES.warmEl=0;ton(440,528,1.2,.12);render();return;}const wz=document.getElementById('s-zeit');if(wz)wz.textContent=String(Math.ceil(rest));const wr=document.getElementById('s-ring');if(wr)wr.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.warmEl/SES.warm)).toFixed(2));return;}
+    if(ui.route==='session'&&SES.warm>0){SES.warmEl+=dt;const rest=SES.warm-SES.warmEl;if(rest<=0){SES.warm=0;SES.warmEl=0;ton(330,330,1.0,.12);render();return;}const wz=document.getElementById('s-zeit');if(wz)wz.textContent=String(Math.ceil(rest));const wr=document.getElementById('s-ring');if(wr)wr.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.warmEl/SES.warm)).toFixed(2));return;}
     if(ui.route==='session'){const s=SES.plan[SES.i];const dur=stepDur(s);
       if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur&&!s.pacer){stufeEnde();return;}}
       const z=document.getElementById('s-zeit');if(z)z.textContent=mmss(dur-SES.elapsed);const rg=document.getElementById('s-ring');if(rg)rg.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.elapsed/dur)).toFixed(2));

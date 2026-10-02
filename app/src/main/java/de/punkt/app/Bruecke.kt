@@ -172,6 +172,24 @@ class Bruecke(private val a: MainActivity) {
     }
 
     @JavascriptInterface
+    fun musikWaehlen(): Boolean {
+        a.runOnUiThread { a.musikWaehlen() }
+        return true
+    }
+
+    @JavascriptInterface
+    fun musikStart(name: String, vol: Double): Boolean {
+        a.runOnUiThread { a.musik.start(vol.toFloat()) }
+        return true
+    }
+
+    @JavascriptInterface
+    fun musikStopp(fadeMs: Double): Boolean {
+        a.runOnUiThread { a.musik.stopp(fadeMs.toLong()) }
+        return true
+    }
+
+    @JavascriptInterface
     fun log(text: String): Boolean {
         Protokoll.schreib(a, "Web: " + text.take(300))
         return true

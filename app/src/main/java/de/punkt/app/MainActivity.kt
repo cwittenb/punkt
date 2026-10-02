@@ -37,6 +37,16 @@ class MainActivity : Activity() {
     private var offeneAktion: String? = null
     private var dateiRueckruf: ValueCallback<Array<Uri>>? = null
     val recorder by lazy { Recorder(this) }
+    val musik by lazy { Musik(this) }
+
+    fun musikWaehlen() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*")
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, REQ_MUSIK)
+        } catch (e: Exception) {
+        }
+    }
 
     // Sprachbegleitung
     private var tts: TextToSpeech? = null
@@ -189,6 +199,7 @@ class MainActivity : Activity() {
         Protokoll.schreib(this, "App beendet" + (if (isFinishing) " (geschlossen)" else "") + (if (isChangingConfigurations) " (Konfiguration)" else ""))
         wach(false)
         recorder.stopp()
+        musik.stopp(0)
         tts?.shutdown()
         tts = null
         // Die Web-Oberfläche wirklich beenden: Der Prozess lebt wegen des Gate-Dienstes weiter,
@@ -230,6 +241,10 @@ class MainActivity : Activity() {
         if (requestCode == REQ_DATEI) {
             dateiRueckruf?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
             dateiRueckruf = null
+        }
+        if (requestCode == REQ_MUSIK && resultCode == RESULT_OK && data?.data != null) {
+            val name = musik.uebernehmen(data.data!!)
+            js("window.punktNativ&&window.punktNativ.musik(" + JSONObject.quote(name ?: "") + ")")
         }
     }
 
@@ -320,5 +335,6 @@ class MainActivity : Activity() {
         const val REQ_DATEI = 41
         const val REQ_MITTEILUNG = 42
         const val REQ_MIKRO = 43
+        const val REQ_MUSIK = 44
     }
 }

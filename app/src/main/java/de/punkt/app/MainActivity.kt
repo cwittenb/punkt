@@ -377,6 +377,12 @@ class MainActivity : Activity() {
     }
 
     companion object {
+        /** Intent, der die App mit einer Aktion für die Web-App nach vorne holt (Mitteilung, Gate). */
+        fun aktionIntent(ctx: android.content.Context, aktion: String): Intent =
+            Intent(ctx, MainActivity::class.java)
+                .putExtra("aktion", aktion)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
         const val REQ_DATEI = 41
         const val REQ_MITTEILUNG = 42
         const val REQ_MIKRO = 43

@@ -34,11 +34,8 @@ class GateService : AccessibilityService() {
         if (t - zuletzt < 1200) return
         zuletzt = t
         Protokoll.schreib(this, "Gate holt die App zurück (vor: $pkg)")
-        val i = Intent(this, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra("aktion", "gate")
         try {
-            startActivity(i)
+            startActivity(MainActivity.aktionIntent(this, "gate"))
         } catch (ex: Exception) {
         }
     }

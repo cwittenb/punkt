@@ -86,7 +86,11 @@ object Planer {
         )
     }
 
-    /** Stellt den Wecker auf den nächsten offenen Termin. */
+    // So weit voraus wird gesucht: ein Stammfenster nur montags darf übers Wochenende nicht verloren gehen
+    private const val HORIZONT_TAGE = 8L
+
+    /** Stellt den Wecker auf den nächsten offenen Termin. Synchronisiert: Brücke und Empfänger rufen gleichzeitig. */
+    @Synchronized
     fun plane(ctx: Context) {
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
         val p = Speicher.plan(ctx)
@@ -94,7 +98,8 @@ object Planer {
         val erledigt = Speicher.prefs(ctx).getLong("erledigtBis", 0L)
         val naechster = if (p == null || !p.optBoolean("angelegt")) null else {
             val h = LocalDate.now()
-            (termine(p, h) + termine(p, h.plusDays(1)))
+            (0 until HORIZONT_TAGE).asSequence()
+                .flatMap { termine(p, h.plusDays(it)).asSequence() }
                 .filter { it.zeit > erledigt && it.zeit > jetzt - 5 * 60_000L }
                 .minByOrNull { it.zeit }
         }

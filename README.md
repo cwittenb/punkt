@@ -9,7 +9,8 @@ Die Oberfläche ist eine Web-App (`app/src/main/assets/web/index.html`). Die And
 | Morgen-Gate | Bedienungshilfe `GateService`. Holt die App nach vorne, bis Anker, Journal und Skala erledigt sind |
 | Tagesimpulse, stille Impulse, Stammfenster, Schwellen | Exakte Wecker (`Planer`) und stille Mitteilungen (`Notif`) |
 | Handy liegt mit dem Display nach unten | Beschleunigungssensor während der Praxis; das Display wird dann fast dunkel |
-| Sprachaufnahmen im Journal | `Recorder`, Dateien bleiben im privaten App-Ordner |
+| Diktat ins Journal | `Diktat`: Spracherkennung von Android, nur auf dem Gerät (`createOnDeviceSpeechRecognizer`). Der Text landet live im Feld, es entsteht keine Audiodatei |
+| Sprachnotizen (Rückfall) | `Recorder`, wenn keine Erkennung auf dem Gerät da ist oder das deutsche Sprachpaket fehlt. Dateien bleiben im privaten App-Ordner |
 | Sprachbegleitung | Android-Sprachausgabe (Deutsch) |
 | NFC-Aufkleber | Adresse `punkt://anker` startet den Morgenanker |
 | Export | Downloads/Punkt |
@@ -17,6 +18,7 @@ Die Oberfläche ist eine Web-App (`app/src/main/assets/web/index.html`). Die And
 ## Datenschutz
 
 - Die App hat **keine Internet-Berechtigung**. Sie kann nichts senden.
+- Das Diktat nutzt ausschließlich die Erkennung auf dem Gerät. Sie läuft im Sprachdienst von Android (meist Google), das Audio verlässt das Handy dabei nicht. Fehlt das deutsche Sprachpaket, stößt die App den Download beim Sprachdienst an und nimmt bis dahin eine Sprachnotiz auf.
 - Keine Cloud-Sicherung und keine Übertragung beim Handywechsel (`allowBackup=false`, `datenregeln.xml`). Zum Umziehen: in der App exportieren und auf dem neuen Handy importieren.
 - In diesem Repository liegt nur Code, keine Journaldaten.
 
@@ -64,7 +66,8 @@ app/src/main/java/de/punkt/app/
   Empfaenger.kt     Wecker und Neustart
   Notif.kt          Kanäle und stille Mitteilungen
   GateService.kt    Morgen-Gate
-  Recorder.kt       Sprachaufnahmen
+  Diktat.kt         Diktat ins Textfeld, nur auf dem Gerät
+  Recorder.kt       Sprachnotizen (Rückfall)
   Speicher.kt       Plan, Zähler, Zustand, Gate-Status
 ```
 

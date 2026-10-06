@@ -38,6 +38,7 @@ class MainActivity : Activity() {
     private var dateiRueckruf: ValueCallback<Array<Uri>>? = null
     val recorder by lazy { Recorder(this) }
     val musik by lazy { Musik(this) }
+    val diktat by lazy { Diktat(this) }
 
     fun musikWaehlen() {
         val i = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*")
@@ -134,6 +135,7 @@ class MainActivity : Activity() {
             }
         }
 
+        diktat.verfuegbar
         if (savedInstanceState == null) verarbeite(intent)
         else Speicher.prefs(this).getString("offeneAktion", null)?.let {
             Speicher.prefs(this).edit().remove("offeneAktion").apply()
@@ -205,6 +207,8 @@ class MainActivity : Activity() {
     // Im Hintergrund schweigt die Begleitung; die Web-Oberfläche meldet sich als verborgen
     override fun onStop() {
         sprichStopp()
+        // Im Hintergrund darf und soll nicht mitgehört werden
+        if (diktat.laeuft()) diktat.stoppJetzt()
         web.onPause()
         super.onStop()
     }
@@ -215,6 +219,7 @@ class MainActivity : Activity() {
         Protokoll.schreib(this, "App beendet" + (if (isFinishing) " (geschlossen)" else "") + (if (isChangingConfigurations) " (Konfiguration)" else ""))
         wach(false)
         recorder.stopp()
+        diktat.stoppJetzt()
         musik.stopp(0)
         tts?.shutdown()
         tts = null

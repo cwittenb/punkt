@@ -60,7 +60,8 @@ jobs:
           path: punkt-*.apk
 
       - name: Release veröffentlichen
-        if: env.SIGNIERT == '1'
+        # Nur main veröffentlicht; Builds anderer Branches sind Prüfbuilds
+        if: env.SIGNIERT == '1' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v0.${{ github.run_number }}

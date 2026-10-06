@@ -10,13 +10,19 @@ class Recorder(private val ctx: Context) {
     private var mr: MediaRecorder? = null
     private var start = 0L
 
+    private fun datei(name: String): File =
+        File(File(ctx.filesDir, "aufnahmen"), name.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".m4a")
+
+    @Synchronized
+    fun loeschen(name: String) {
+        if (name.isNotBlank()) datei(name).delete()
+    }
+
     @Synchronized
     fun start(name: String): Boolean {
         stopp()
-        val dir = File(ctx.filesDir, "aufnahmen")
-        dir.mkdirs()
-        val sicher = name.replace(Regex("[^A-Za-z0-9_-]"), "_")
-        val f = File(dir, "$sicher.m4a")
+        val f = datei(name)
+        f.parentFile?.mkdirs()
         val m = MediaRecorder(ctx)
         return try {
             m.setAudioSource(MediaRecorder.AudioSource.MIC)

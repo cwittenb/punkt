@@ -94,6 +94,33 @@ class Bruecke(private val a: MainActivity) {
     @JavascriptInterface
     fun aufnahmeStopp(): Int = a.recorder.stopp()
 
+    /** Sprachnotizen löschen, Namen als JSON-Liste. */
+    @JavascriptInterface
+    fun aufnahmeLoeschen(namen: String): Boolean = try {
+        val arr = org.json.JSONArray(namen)
+        (0 until arr.length()).forEach { a.recorder.loeschen(arr.optString(it)) }
+        true
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Diktat auf dem Gerät möglich? Sonst nimmt die Web-App eine Sprachnotiz auf. */
+    @JavascriptInterface
+    fun diktatMoeglich(): Boolean = a.diktat.verfuegbar
+
+    @JavascriptInterface
+    fun diktatStart(key: String): Boolean {
+        if (!a.mikrofonFrei()) return false
+        a.runOnUiThread { a.diktat.start(key) }
+        return true
+    }
+
+    @JavascriptInterface
+    fun diktatStopp(): Boolean {
+        a.runOnUiThread { a.diktat.stopp() }
+        return true
+    }
+
     /** Datei nach Downloads/Punkt schreiben. */
     @JavascriptInterface
     fun speichere(name: String, daten: String): Boolean = try {

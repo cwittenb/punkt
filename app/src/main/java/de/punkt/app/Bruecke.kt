@@ -135,6 +135,12 @@ class Bruecke(private val a: MainActivity) {
     @JavascriptInterface
     fun sprich(wort: String): Boolean = a.sprich(wort)
 
+    @JavascriptInterface
+    fun sprichStopp(): Boolean {
+        a.sprichStopp()
+        return true
+    }
+
     /** CSS-Farbe wie "rgb(30, 30, 30)" für die Systemleisten. */
     @JavascriptInterface
     fun leiste(css: String): Boolean {
@@ -178,7 +184,7 @@ class Bruecke(private val a: MainActivity) {
     }
 
     @JavascriptInterface
-    fun musikStart(name: String, vol: Double): Boolean {
+    fun musikStart(vol: Double): Boolean {
         a.runOnUiThread { a.musik.start(vol.toFloat()) }
         return true
     }

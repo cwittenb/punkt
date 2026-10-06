@@ -2,6 +2,7 @@
 
 - ergänzt das Dokumentgerüst (Doctype, Viewport, Rand-Reset), das der Artefakt-Host sonst selbst setzt
 - entfernt den Google-Fonts-Link; die App hat kein Internet und bringt die Schriften selbst mit
+- bettet web/engine.js ein, damit die App eine einzige Datei lädt
 """
 import pathlib
 import re
@@ -13,6 +14,11 @@ ziel = wurzel / "app" / "src" / "main" / "assets" / "web" / "index.html"
 
 s = quelle.read_text(encoding="utf-8")
 s = re.sub(r'<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>\s*', "", s)
+engine = (wurzel / "web" / "engine.js").read_text(encoding="utf-8")
+marke = '<script src="engine.js"></script>'
+if marke not in s:
+    sys.exit("web/punkt.html bindet engine.js nicht ein")
+s = s.replace(marke, "<script>\n" + engine + "\n</script>", 1)
 if "fonts.googleapis" in s or "fonts.gstatic" in s:
     sys.exit("Google-Fonts-Verweis nicht vollständig entfernt")
 if s.lstrip().lower().startswith("<!doctype"):

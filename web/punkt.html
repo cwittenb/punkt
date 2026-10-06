@@ -274,6 +274,7 @@ details.alle summary{cursor:pointer;list-style:none;display:flex;align-items:cen
 </div>
 <button type="button" class="panel-toggle" id="panelToggle" aria-controls="panel" aria-expanded="false">Test</button>
 
+<script src="engine.js"></script>
 <script>
 'use strict';
 /* ---------- Android-Hülle: Brücke per Feature-Erkennung ---------- */
@@ -536,7 +537,7 @@ function empfehlungen(t,ort){
 
 /* ---------- UI-Zustand ---------- */
 const ui={route:'auto',f:{},info:{},modal:null,wc:null,ki:null,nach:null,zeit:{t:30,ort:'allein'},offen:{},schatten:null,angst:null,panelOpen:false,lastPacer:false};
-let SES=null,REC=null;
+let REC=null;
 const GATE_OK=['gate','session','journal','skala','notausgang','frei','start','bnotiz'];
 function gateAktiv(){if(!S.created)return false;const n=now();if(n.getHours()<S.settings.morgen)return false;const d=peek(today());return !(d&&d.frei);}
 function autoRoute(){if(!S.created)return 'start';if(gateAktiv()){const d=peek(today());if(!d||!d.anker)return 'gate';if(!d.journal)return 'journal';if(!d.skala)return 'skala';}return 'heute';}
@@ -550,58 +551,59 @@ let ACTX=null;
 function ensureAudio(){try{const C=window.AudioContext||window.webkitAudioContext;if(!ACTX&&C)ACTX=new C();if(ACTX&&ACTX.state==='suspended')ACTX.resume();}catch(e){}}
 function ton(f1,f2,dauer,vol){if(!ACTX)return;try{const t=ACTX.currentTime,o=ACTX.createOscillator(),g=ACTX.createGain();o.type='sine';o.frequency.setValueAtTime(f1,t);o.frequency.linearRampToValueAtTime(f2,t+.6);g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+.06);g.gain.exponentialRampToValueAtTime(.0001,t+dauer);o.connect(g);g.connect(ACTX.destination);o.start(t);o.stop(t+dauer+.1);}catch(e){}}
 function gong(){if(document.hidden&&NATIVE)nat('summen');ton(392,392,2.6,.18);setTimeout(()=>ton(588,588,2.2,.07),40);}
-function sprich(w){if(NATIVE&&nat('sprich',w))return;try{const u=new SpeechSynthesisUtterance(w);u.lang='de-DE';u.rate=.8;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}}
-function atemSignal(w){if(document.hidden)return;const c=cur0();if(c&&SES&&SES.typ==='breathwork'&&!bwAnleitung())return;const takt=c&&c.takt||5000;const m=S.settings.begleitung;if(m==='ton'||(m==='stimme'&&takt<2000))ton(w==='ein'?396:528,w==='ein'?528:396,takt*0.92/1000,.11);else if(m==='stimme')sprich(w);}
-function cur0(){return ui.route==='session'&&SES&&SES.warm<=0?SES.plan[SES.i]:null;}
-const ATEM={epoch:0,idx:-1,letzt:0};
-function pacerTick(){const el=document.getElementById('pacer');if(!el){ui.lastPacer=false;return;}
-  if(!ui.lastPacer){ui.lastPacer=true;ATEM.epoch=Date.now()+1500;ATEM.idx=-1;ATEM.letzt=Date.now();}
-  {const jetzt=Date.now();if(cur0()&&!stepLaeuft(cur0())){ATEM.epoch+=jetzt-ATEM.letzt;ATEM.letzt=jetzt;return;}ATEM.letzt=jetzt;}
-  const cur=cur0();const takt=cur&&cur.takt||5000;const idx=Math.floor((Date.now()-ATEM.epoch)/takt);if(idx<0)return;if(cur&&cur.pacer&&SES.atemAus)return;if(idx===ATEM.idx)return;
-  if(cur&&cur.pacer&&idx>0&&idx%2===0&&SES.elapsed>=stepDur(cur)-takt*0.3/1000){ATEM.idx=idx;SES.elapsed=stepDur(cur);SES.atemAus=true;el.style.transform='scale(.55)';const we=document.getElementById('pacer-word');if(we)we.textContent='';stufeEnde();return;}
-  ATEM.idx=idx;const w=idx%2===0?'ein':'aus';
-  el.style.transform=w==='ein'?'scale(1)':'scale(.55)';const wd=document.getElementById('pacer-word');if(wd)wd.textContent=w;atemSignal(w);}
+function sprich(w){if(NATIVE)return nat('sprich',w)===true;try{const u=new SpeechSynthesisUtterance(w);u.lang='de-DE';u.rate=.8;speechSynthesis.speak(u);return true;}catch(e){return false;}}
 function schlaf(){if(NATIVE)nat('wach',false);if(WAKE){try{WAKE.release();}catch(e){}WAKE=null;}}
 let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLock&&!WAKE)navigator.wakeLock.request('screen').then(l=>{WAKE=l;l.addEventListener('release',()=>{WAKE=null;});}).catch(()=>{});}catch(e){}}
 
-/* ---------- Sessions ---------- */
+/* ---------- Sessions: Adapter zur Engine ---------- */
 const SES_KEY='punkt-ses';
-function offenKarte(){const g=ui.sesOffen;if(!g)return '';const s=g.s,x=s.plan[s.i]||s.plan[0];const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const m=Math.round(s.plan.slice(0,s.i).reduce((a,y)=>a+y.min,0)+Math.min(x.min,(s.elapsed||0)/secPerMin()));
-  return '<section class="card hl"><span class="chip pink" style="align-self:flex-start">Unterbrochen um '+hm(new Date(g.at))+'</span><h2 class="h2">'+esc(titel)+'</h2><p class="soft small">Schritt '+(s.i+1)+' von '+s.plan.length+': '+esc(x.titel)+(m>0?' · '+m+' Min. geübt':'')+'</p><div class="btnrow"><button type="button" class="btn" data-a="offenWeiter">Fortsetzen</button>'+(m>0?'<button type="button" class="btn sec" data-a="offenEnde">Hier beenden</button>':'')+'</div><button type="button" class="link quiet" data-a="offenWeg" style="align-self:flex-start">Verwerfen</button></section>';}
-function sesMerken(){try{if(SES&&SES.typ!=='schwelle')localStorage.setItem(SES_KEY,JSON.stringify({s:SES,at:Date.now()}));else localStorage.removeItem(SES_KEY);}catch(e){}ui.sesGemerkt=Date.now();}
-function plog(t){if(typeof NATIVE!=='undefined'&&NATIVE)nat('log',String(t));}
-function warmDauer(x,erster){const w=String(x.text||'').split(/\s+/).filter(Boolean).length;return Math.min(20,Math.max(erster?10:5,Math.ceil(w/3)+(erster?5:3)));}
-function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;tickAn();const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SES=Object.assign({typ:typ,ctx:ctx,plan:plan,i:0,elapsed:0,last:Date.now(),warm:0,warmEl:0},extra||{});if(typ!=='schwelle')SES.warm=warmDauer(plan[0],true);wach();go('session');sesMerken();plog('Übung gestartet: '+typ);}
-function stepDur(s){return s.sek!=null?s.sek:s.min*secPerMin();}
-function stepFertig(x){return SES.elapsed>=stepDur(x)&&(!x.pacer||!!SES.atemAus);}
-function stufeEnde(){if(SES.typ==='schwelle'){if(SES.i<SES.plan.length-1)ton(528,528,.9,.08);else gong();sesWeiter();return;}if(SES.typ==='breathwork'){const x=SES.plan[SES.i];if(x.halten){const H=SES.halten||(SES.halten=[]);if(H[x.runde-1]==null)H[x.runde-1]=Math.round(SES.elapsed);x.min=Math.round(H[x.runde-1]/6)/10;}if(SES.i<SES.plan.length-1){ton(x.halten?330:528,x.halten?396:528,1.2,.09);sesWeiter();return;}}gong();render();}
-function brauchtLage(s){if(SES&&(SES.typ==='schwelle'||SES.typ==='breathwork'))return false;if(s.offen||s.gehen)return false;if(s.pacer)return S.settings.begleitung!=='stumm';return true;}
-function stepLaeuft(s){return !brauchtLage(s)||!!S.sim.faceDown;}
-function sesMinuten(){let m=0;SES.plan.forEach((x,i)=>{if(i<SES.i)m+=x.min;else if(i===SES.i)m+=Math.min(x.min,SES.elapsed/secPerMin());});return Math.round(m*10)/10;}
-function sesWeiter(){const s=SES;if(!s)return;if(s.i<s.plan.length-1){s.i++;s.elapsed=0;s.atemAus=false;s.warm=(s.typ==='schwelle'||s.typ==='breathwork')?0:warmDauer(s.plan[s.i],false);s.warmEl=0;s.last=Date.now();render();if(s.typ==='breathwork')bwStufeStart(s.plan[s.i]);sesMerken();plog('Schritt '+(s.i+1)+' von '+s.plan.length+': '+s.plan[s.i].titel);}else sesFertig();}
-function sesFertig(){const s=SES;const at=hm(now());schlaf();if(s.typ==='breathwork')nat('musikStopp',2000);try{localStorage.removeItem(SES_KEY);}catch(e){}plog('Übung fertig: '+s.typ);
-  if(s.typ==='schwelle'){SES=null;day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
-  const min=sesMinuten();SES=null;
+let SESCTX=null;   // Kontext der laufenden Übung: {typ, ctx, titel, schwelleId}. Zeit und Schritte liegen in ENGINE.
+function plog(t){if(NATIVE)nat('log',String(t));}
+function istBw(){return !!SESCTX&&SESCTX.typ==='breathwork';}
+function sesGates(){return{lage:!!S.sim.faceDown,sichtbar:!document.hidden};}
+function lageGates(x,typ){if(typ==='schwelle'||typ==='breathwork')return[];if(x.offen||x.gehen)return[];if(x.pacer)return S.settings.begleitung!=='stumm'?['lage']:[];return['lage'];}
+function bwCues(x,sek){if(x.cues)return[{at:'alle-180',text:x.cues}];if(x.key==='bwSchnell'&&sek>20)return[{at:'ende-10',text:'Noch fünf.'}];if(x.halten&&x.cue)return[{at:20,text:x.cue}];return[];}
+/** Übersetzt einen Plan (st(key,min)-Objekte) in Engine-Schritte. Hier steckt das ganze Wissen über Formate. */
+function planZuFormat(typ,plan){const n=plan.length,bw=typ==='breathwork',sw=typ==='schwelle',anl=bw&&bwAnleitung(),mus=bw&&bwMusik();
+  return{id:typ,schritte:plan.map((x,i)=>{const sekFix=x.sek!=null;const sek=sekFix?x.sek:x.min*secPerMin();
+    return schritt(Object.assign({},x,{sek:sek,sekFix:sekFix,min:x.halten?null:x.min,
+      treiber:x.halten?'halten':x.pacer?'atem':x.key==='bwVor'?'frei':'zeit',takt:x.takt||5000,max:x.halten?sek:undefined,
+      ende:(sw||(bw&&i<n-1))?'auto':'tap',warm:!sw&&!(bw&&i>0),gates:lageGates(x,typ),
+      ansage:anl?x.ansage||null:null,cues:anl?bwCues(x,sek):[],
+      musik:mus?((x.key==='bwAtmen'||(x.key==='bwSchnell'&&x.runde===1))?'start':x.key==='bwNach'?'stop':null):null}));})};}
+function pacerZeig(w){const el=document.getElementById('pacer');if(!el)return;el.style.transform=w==='ein'?'scale(1)':'scale(.55)';const wd=document.getElementById('pacer-word');if(wd)wd.textContent=w;}
+function sesPatch(z,status){const x=z.schritt;if(!x||ui.route!=='session')return;
+  if(z.phase==='warm'){const t=document.getElementById('s-zeit');if(t)t.textContent=String(Math.ceil(z.warmRest));const r=document.getElementById('s-ring');if(r)r.setAttribute('stroke-dashoffset',(100-100*z.warmAnteil).toFixed(2));return;}
+  const t=document.getElementById('s-zeit');if(t)t.textContent=mmss(z.rest!=null?z.rest:z.zeit);const r=document.getElementById('s-ring');if(r)r.setAttribute('stroke-dashoffset',(100-100*z.anteil).toFixed(2));
+  const s=sesStatus(x,z);if(status||s!==ui.lastStatus){ui.lastStatus=s;const el=document.getElementById('s-status');if(el)el.innerHTML=s;}}
+const ENGINE=createEngine({
+  uhr:()=>performance.now(),
+  sprecher:{say:w=>{const ok=sprich(w);const ms=Math.max(1200,String(w).split(/\s+/).length*420);return new Promise(r=>setTimeout(r,ok?ms:0));},stop:()=>{if(NATIVE)nat('sprichStopp');try{speechSynthesis.cancel();}catch(e){}}},
+  atemWort:sig=>S.settings.begleitung==='stimme'&&sig.takt>=2000&&!(istBw()&&bwAnleitung()),
+  ton:{atem:(w,takt)=>{pacerZeig(w);if(istBw()&&bwAnleitung())return;const m=S.settings.begleitung;if(m==='ton'||(m==='stimme'&&takt<2000))ton(w==='ein'?396:528,w==='ein'?528:396,takt*0.92/1000,.11);},
+    gong:gong,klick:()=>ton(528,528,.9,.08),warmEnde:()=>ton(330,330,1.0,.12)},
+  musik:{start:()=>nat('musikStart',0.5),stop:ms=>nat('musikStopp',ms)},
+  wach:an=>an?wach():schlaf(),
+  speicher:{schreiben:snap=>{try{if(!snap||!SESCTX||SESCTX.typ==='schwelle')localStorage.removeItem(SES_KEY);else localStorage.setItem(SES_KEY,JSON.stringify({s:SESCTX,eng:snap,at:Date.now()}));}catch(e){}}},
+  render:(z,grund)=>{if(grund==='ende'){if(z.ergebnis&&z.ergebnis.regulaer)sesFertig(z.ergebnis);return;}if(ui.route!=='session')return;if(grund==='phase'&&!z.fertig&&z.phase!=='warm'){sesPatch(z,true);return;}render();},
+  patch:z=>sesPatch(z,false),
+  log:plog
+});
+function offenKarte(){const g=ui.sesOffen;if(!g)return '';const s=g.s,e=g.eng,plan=e.format.schritte,x=plan[e.i]||plan[0];const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const m=Math.round((e.minuten||0)+(x.min!=null&&x.sek?Math.min(x.min,x.min*(e.acc||0)/x.sek):(e.acc||0)/60));
+  return '<section class="card hl"><span class="chip pink" style="align-self:flex-start">Unterbrochen um '+hm(new Date(g.at))+'</span><h2 class="h2">'+esc(titel)+'</h2><p class="soft small">Schritt '+(e.i+1)+' von '+plan.length+': '+esc(x.titel)+(m>0?' · '+m+' Min. geübt':'')+'</p><div class="btnrow"><button type="button" class="btn" data-a="offenWeiter">Fortsetzen</button>'+(m>0?'<button type="button" class="btn sec" data-a="offenEnde">Hier beenden</button>':'')+'</div><button type="button" class="link quiet" data-a="offenWeg" style="align-self:flex-start">Verwerfen</button></section>';}
+function sesMerken(){ENGINE.speichern();}
+function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SESCTX=Object.assign({typ:typ,ctx:ctx},extra||{});go('session');ENGINE.start(planZuFormat(typ,plan),{gates:sesGates()});}
+function sesFertig(erg){const s=SESCTX;if(!s)return;SESCTX=null;const at=hm(now());
+  if(s.typ==='schwelle'){day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
+  const min=erg.minuten;
   if(s.typ==='anker'){day().anker={min:min,variante:ampelAm().stufe,at:at};save();go('journal');return;}
-  const z=ui.zeit||{};const e={id:uid(),typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?(z.ort||null):(s.ctx==='stamm'?'arbeit':null),text:'',empfohlen:s.ctx==='zeit'&&z.top===s.typ};if(s.halten&&s.halten.length)e.halten=s.halten.filter(x=>x!=null);day().haupt.push(e);ui.nach=Object.assign({tag:today()},e);save();go('nach');}
-function tick(){
-  const t=Date.now();
-  if(SES){const dt=Math.min(2,(t-SES.last)/1000);SES.last=t;
-    if(ui.route==='session'&&SES.warm>0){SES.warmEl+=dt;const rest=SES.warm-SES.warmEl;if(rest<=0){SES.warm=0;SES.warmEl=0;ton(330,330,1.0,.12);render();bwStufeStart(SES.plan[SES.i]);return;}const wz=document.getElementById('s-zeit');if(wz)wz.textContent=String(Math.ceil(rest));const wr=document.getElementById('s-ring');if(wr)wr.setAttribute('stroke-dashoffset',(100-100*Math.min(1,SES.warmEl/SES.warm)).toFixed(2));return;}
-    if(ui.route==='session'){const s=SES.plan[SES.i];const dur=stepDur(s);
-      if(SES.elapsed<dur&&stepLaeuft(s)){SES.elapsed=Math.min(dur,SES.elapsed+dt);if(SES.elapsed>=dur&&!s.pacer){stufeEnde();return;}}
-      if(SES.typ==='breathwork'&&s.cues&&bwAnleitung()){const c=Math.floor(SES.elapsed/180);if(c>(SES.cue||0)){SES.cue=c;sprich(s.cues[(c-1)%s.cues.length]);}}
-      if(SES.typ==='breathwork'&&bwAnleitung()&&!SES.cueH){if(s.halten&&s.cue&&SES.elapsed>=20){SES.cueH=true;sprich(s.cue);}else if(s.key==='bwSchnell'&&dur>20&&dur-SES.elapsed<=10){SES.cueH=true;sprich('Noch fünf.');}}
-      const z=document.getElementById('s-zeit');if(z)z.textContent=mmss(s.halten?SES.elapsed:dur-SES.elapsed);const rg=document.getElementById('s-ring');if(rg)rg.setAttribute('stroke-dashoffset',(100-100*(s.halten?(SES.elapsed%60)/60:Math.min(1,SES.elapsed/dur))).toFixed(2));
-      const stt=document.getElementById('s-status');if(stt)stt.innerHTML=sesStatus(s,stepFertig(s));}}
-  if(SES&&t-(ui.sesGemerkt||0)>3000)sesMerken();
-  if(REC){const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent='● '+mss((t-REC.start)/1000);live();}
-  pacerTick();
-}
-function sesStatus(s,fertig){if(s.halten&&!fertig)return 'Leer halten. Tippe irgendwo, wenn der Atemreiz kommt.';if(fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';
-  if(s.pacer&&SES&&SES.elapsed>=stepDur(s))return 'Noch dieser Atemzug, dann der Gong.';
-  if(!brauchtLage(s))return s.pacer?'Folge dem Kreis.':s.gehen?'Im Gehen darf das Handy in die Tasche.':'Das Display darf oben liegen.';
-  return S.sim.faceDown?'<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten'+(s.pacer?' · '+(S.settings.begleitung==='ton'?'der Ton':'die Stimme')+' führt':''):'<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';}
+  const z=ui.zeit||{};const e={id:uid(),typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?(z.ort||null):(s.ctx==='stamm'?'arbeit':null),text:'',empfohlen:s.ctx==='zeit'&&z.top===s.typ};if(erg.halten&&erg.halten.length)e.halten=erg.halten;day().haupt.push(e);ui.nach=Object.assign({tag:today()},e);save();go('nach');}
+function sesStatus(x,z){if(x.halten&&!z.fertig)return 'Leer halten. Tippe irgendwo, wenn der Atemreiz kommt.';if(z.fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';
+  if(z.phase==='paused'&&z.pauseGrund==='lage')return '<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';
+  if(z.phase==='paused'&&z.pauseGrund==='hintergrund')return '<span class="dot gelb"></span>Pausiert.';
+  if(x.pacer&&z.soll!=null&&z.zeit>=z.soll-(x.takt||5000)*0.3/1000)return 'Noch dieser Atemzug, dann der Gong.';
+  if(!x.gates.length)return x.pacer?'Folge dem Kreis.':x.gehen?'Im Gehen darf das Handy in die Tasche.':'Das Display darf oben liegen.';
+  return '<span class="dot" style="background:var(--pink)"></span>Läuft · Display liegt unten'+(x.pacer?' · '+(S.settings.begleitung==='ton'?'der Ton':'die Stimme')+' führt':'');}
 </script>
 <script>
 'use strict';
@@ -675,7 +677,7 @@ function stichChips(key,liste,cols){liste=liste||STICHWORTE;return '<div class="
 function ampelChip(s){return '<span class="chip '+(s==='gruen'?'good':s==='gelb'?'warn':'crit')+'"><span class="dot '+s+'"></span>Ampel '+STUFE_NAME[s].toLowerCase()+'</span>';}
 function passungChip(p){const m={passt:['purple','Passung: passt'],pruefen:['pink','Passung: prüfen'],aendern:['pink','Passung: ändern']}[p]||['purple','Passung: passt'];return '<span class="chip '+m[0]+'">'+m[1]+'</span>';}
 function ringHtml(inner,anteil,warm){return '<div class="ring-wrap'+(warm?' klein':'')+'"><svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="94" class="ring-bg"/><circle cx="100" cy="100" r="94" class="ring-fg'+(warm?' warm':'')+'" id="s-ring" pathLength="100" stroke-dasharray="100" stroke-dashoffset="'+(100-100*Math.min(1,anteil||0)).toFixed(2)+'"/></svg><div class="ring-in">'+inner+'</div></div>';}
-function warmHinweis(x){if(x.gehen)return 'Lies in Ruhe, dann steck das Handy ein. Die Zeit läuft nach dem Ton.';if(!brauchtLage(x))return x.pacer?'Setz dich zurecht, der Kreis führt den Atem. Mit Ton oder Stimme kannst du das Handy weglegen.':'Lies in Ruhe. Die Übung beginnt nach dem Ton.';if(x.pacer)return 'Leg das Handy mit dem Display nach unten. '+(S.settings.begleitung==='ton'?'Der Ton':'Die Stimme')+' führt den Atem, die Zeit läuft nach dem Ton.';return 'Lies in Ruhe, dann leg das Handy mit dem Display nach unten. Die Zeit läuft nach dem Ton.';}
+function warmHinweis(x){if(x.gehen)return 'Lies in Ruhe, dann steck das Handy ein. Die Zeit läuft nach dem Ton.';if(!x.gates.length)return x.pacer?'Setz dich zurecht, der Kreis führt den Atem. Mit Ton oder Stimme kannst du das Handy weglegen.':'Lies in Ruhe. Die Übung beginnt nach dem Ton.';if(x.pacer)return 'Leg das Handy mit dem Display nach unten. '+(S.settings.begleitung==='ton'?'Der Ton':'Die Stimme')+' führt den Atem, die Zeit läuft nach dem Ton.';return 'Lies in Ruhe, dann leg das Handy mit dem Display nach unten. Die Zeit läuft nach dem Ton.';}
 function begleitSeg(){const b=S.settings.begleitung;return '<div class="seg" role="group" aria-label="Atembegleitung" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(b===x[0]?'on':'')+'" aria-pressed="'+(b===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';}
 function bwSet(){const b=S.settings.bw||(S.settings.bw={modus:'beides',atmen:25,musik:null});if(!b.modus)b.modus='beides';if(!b.atmen)b.atmen=25;if(!b.variante)b.variante='verbunden';if(!b.runden)b.runden=3;if(!b.atemzuege)b.atemzuege=30;return b;}
 const HALTEN_CUES=['Wer bemerkt diese Stille?','Nichts tun. Nur da sein.','Ist das, was die Stille bemerkt, selbst still?'];
@@ -685,13 +687,12 @@ function bwRundenPlan(b){const out=[st('bwVor',1)];const n=b.atemzuege;
     out.push(Object.assign(st('bwHalten',0),{sek:180,min:3,runde:k,titel:'Runde '+k+' · Halten',cue:HALTEN_CUES[(k-1)%HALTEN_CUES.length]}));
     out.push(Object.assign(st('bwErholung',0),{sek:15,min:.25,runde:k,titel:'Runde '+k+' · Erholung'}));}
   out.push(Object.assign(st('bwRuhe',5),{ansage:'Loslassen. '+TX.bwRuhe.ansage}));out.push(st('bwNach',3));return out;}
-function bwFortschritt(s,x){const R=s.plan.filter(y=>y.runde).reduce((m,y)=>Math.max(m,y.runde),0);return '<p class="small muted" style="margin:0">'+(x.runde?'Runde '+x.runde+' von '+R:esc(x.titel))+' · Schritt '+(s.i+1)+' von '+s.plan.length+'</p>';}
-function haltenHtml(s){return '<button type="button" class="halten" data-a="haltenEnde" aria-label="Halten beenden">'+ringHtml('<span class="ring-time" id="s-zeit" role="timer">'+mmss(s.elapsed)+'</span><span class="ring-sub">gehalten</span>',(s.elapsed%60)/60)+'<span class="small">Tippen zum Einatmen</span></button>';}
+function bwFortschritt(plan,i,x){const R=plan.filter(y=>y.runde).reduce((m,y)=>Math.max(m,y.runde),0);return '<p class="small muted" style="margin:0">'+(x.runde?'Runde '+x.runde+' von '+R:esc(x.titel))+' · Schritt '+(i+1)+' von '+plan.length+'</p>';}
+function haltenHtml(z){return '<button type="button" class="halten" data-a="haltenEnde" aria-label="Halten beenden">'+ringHtml('<span class="ring-time" id="s-zeit" role="timer">'+mmss(z.zeit)+'</span><span class="ring-sub">gehalten</span>',z.anteil)+'<span class="small">Tippen zum Einatmen</span></button>';}
 function bwAnleitung(){const m=bwSet().modus;return m==='anleitung'||m==='beides';}
 function bwMusik(){const b=bwSet();return (b.modus==='musik'||b.modus==='beides')&&!!b.musik;}
 function bwSeg(){const b=bwSet();const seg=(k,opts,cols)=>'<div class="seg" role="group" style="grid-template-columns:repeat('+cols+',minmax(0,1fr))">'+opts.map(x=>'<button type="button" class="segb '+(b[k]===x[0]?'on':'')+'" aria-pressed="'+(b[k]===x[0])+'" data-a="bwSet" data-k="'+k+'" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>';
   return '<p class="lab">Begleitung</p>'+seg('modus',[['anleitung','Anleitung'],['musik','Nur Musik'],['beides','Beides']],3)+(b.modus!=='anleitung'?'<div class="row between"><span class="small">'+(b.musik?esc(b.musik):'<span class="muted">Keine Musik gewählt</span>')+'</span>'+(NATIVE?'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="bwMusik">'+(b.musik?'Ändern':'MP3 wählen')+'</button>':'<span class="xs muted">nur in der App</span>')+'</div>':'')+'<p class="lab">Form</p>'+seg('variante',[['verbunden','Verbunden'],['runden','Runden mit Halten']],2)+(b.variante==='runden'?'<p class="lab">Runden</p>'+seg('runden',[[3,'3'],[4,'4'],[5,'5']],3)+'<p class="lab">Atemzüge je Runde</p>'+seg('atemzuege',[[30,'30'],[40,'40']],2):'<p class="lab">Atmen</p>'+seg('atmen',[[15,'15 Min.'],[25,'25 Min.'],[35,'35 Min.']],3))+(bwAnleitung()?begleitSeg():'');}
-function bwStufeStart(x){if(!SES||SES.typ!=='breathwork')return;if(bwAnleitung()&&x.ansage)sprich(x.ansage);if((x.key==='bwAtmen'||(x.key==='bwSchnell'&&x.runde===1))&&bwMusik())nat('musikStart',bwSet().musik,0.5);if(x.halten||x.key==='bwSchnell')SES.cueH=false;if(x.key==='bwNach')nat('musikStopp',8000);SES.cue=0;SES.cueH=false;}
 function pacerHtml(anteil){const kreis='<div class="pacer" id="pacer" aria-hidden="true" style="transform:scale(.55)"></div>';return (anteil!=null?ringHtml(kreis,anteil):'<div class="pacer-wrap">'+kreis+'</div>')+'<p class="pacer-word" id="pacer-word" aria-hidden="true"></p>'+begleitSeg();}
 
 /* ---------- Ansichten ---------- */
@@ -713,14 +714,14 @@ V.gate=()=>{const a=ampelAm();const plan=ankerPlan();const total=plan.reduce((s,
   (d&&d.anker?'<button type="button" class="btn" data-a="go" data-v="'+(!d.journal?'journal':'skala')+'">Weiter zum '+(!d.journal?'Journal':'Tagesskala')+'</button>':'<button type="button" class="btn" data-a="ankerStart">Praxis beginnen</button><p class="small muted" style="text-align:center">Oder den NFC-Aufkleber am Kissen berühren.</p>')+
   '<div class="row between"><button type="button" class="link quiet" data-a="telefon" style="text-decoration:none;display:flex;gap:8px;align-items:center">'+ICON.phone+'Telefon</button><button type="button" class="link quiet" data-a="go" data-v="notausgang">Notausgang</button></div></div>';};
 
-V.session=()=>{const s=SES;if(!s)return V.heute();const x=s.plan[s.i];const dur=stepDur(x);const fertig=stepFertig(x);const letzter=s.i===s.plan.length-1;
-  const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);
+V.session=()=>{const s=SESCTX;const z=ENGINE.state();if(!s||!z.schritt)return V.heute();const x=z.schritt;const plan=ENGINE.schritte();const letzter=z.letzter;
+  const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const dauerTxt=y=>y.treiber==='halten'?'bis 3 Min.':y.treiber==='frei'?'frei':y.sekFix?y.sek+' Sek.':y.min+' Min.';
   return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="sesAbbruch">Abbrechen</button><span class="small muted">'+esc(titel)+' · '+esc(PHASEN[S.phase].kurz)+'</span></div>'+
-  (s.typ==='breathwork'&&s.plan.length>5?bwFortschritt(s,x):'<ol class="steps" aria-label="Ablauf">'+s.plan.map((y,k)=>'<li class="step '+(k<s.i?'done':k===s.i?'cur':'')+'" '+(k===s.i?'aria-current="step"':'')+'><span class="sd"></span><span class="grow">'+esc(y.titel)+'</span><span class="muted" style="font-weight:400">'+(y.sek!=null?y.sek+' Sek.':y.min+' Min.')+'</span></li>').join('')+'</ol>')+
-  (s.warm>0?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(s.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+warmHinweis(x)+'</p>'+(s.typ==='breathwork'&&s.i===0?bwSeg():(x.pacer?begleitSeg():''))+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(s.warm-s.warmEl)+'</span><span class="ring-sub">Sekunden</span>',s.warmEl/s.warm,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
-  '<section class="card grow"><div class="row between" style="align-items:baseline"><h1 class="h2">'+esc(x.titel)+'</h1>'+(x.pacer?'<span class="timer" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(dur-s.elapsed)+'</span>':'')+'</div><p class="soft">'+esc(x.text)+'</p>'+(x.halten?haltenHtml(s):x.pacer?pacerHtml(s.elapsed/dur):ringHtml('<span class="ring-time" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(dur-s.elapsed)+'</span><span class="ring-sub">von '+(x.sek!=null?x.sek+' Sek.':x.min+' Min.')+'</span>',s.elapsed/dur))+(S.settings.demo&&x.sek==null?'<p class="xs muted" style="text-align:center">Demo-Tempo: 1 Minute dauert hier 5 Sekunden.</p>':'')+'<p class="status" id="s-status">'+sesStatus(x,fertig)+'</p>'+
-  (x.leere&&!fertig?'<button type="button" class="btn sec small" data-a="leereGenug">Genug für heute. Zählt als geschafft.</button>':'')+'</section>'+
-  '<button type="button" class="btn" data-a="sesWeiter" '+(fertig||s.typ==='breathwork'?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
+  (s.typ==='breathwork'&&plan.length>5?bwFortschritt(plan,z.i,x):'<ol class="steps" aria-label="Ablauf">'+plan.map((y,k)=>'<li class="step '+(k<z.i?'done':k===z.i?'cur':'')+'" '+(k===z.i?'aria-current="step"':'')+'><span class="sd"></span><span class="grow">'+esc(y.titel)+'</span><span class="muted" style="font-weight:400">'+dauerTxt(y)+'</span></li>').join('')+'</ol>')+
+  (z.phase==='warm'?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(z.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+warmHinweis(x)+'</p>'+(s.typ==='breathwork'&&z.i===0?bwSeg():(x.pacer?begleitSeg():''))+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(z.warmRest)+'</span><span class="ring-sub">Sekunden</span>',z.warmAnteil,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
+  '<section class="card grow"><div class="row between" style="align-items:baseline"><h1 class="h2">'+esc(x.titel)+'</h1>'+(x.pacer?'<span class="timer" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(z.rest)+'</span>':'')+'</div><p class="soft">'+esc(x.text)+'</p>'+(x.halten?haltenHtml(z):x.pacer?pacerHtml(z.anteil):ringHtml('<span class="ring-time" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(z.rest!=null?z.rest:z.zeit)+'</span><span class="ring-sub">'+(z.soll!=null?'von '+dauerTxt(x):'offen')+'</span>',z.anteil))+(S.settings.demo&&!x.sekFix?'<p class="xs muted" style="text-align:center">Demo-Tempo: 1 Minute dauert hier 5 Sekunden.</p>':'')+'<p class="status" id="s-status">'+sesStatus(x,z)+'</p>'+
+  (x.leere&&!z.fertig?'<button type="button" class="btn sec small" data-a="leereGenug">Genug für heute. Zählt als geschafft.</button>':'')+'</section>'+
+  '<button type="button" class="btn" data-a="sesWeiter" '+(z.fertig||x.treiber==='frei'||(s.typ==='breathwork'&&!x.halten)?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
 
 V.journal=()=>{const f=fragen();const d=day();if(d.journal&&!ui.f._init){ui.f.a=d.journal.a;ui.f.b=d.journal.b;ui.f.aud_a=d.journal.aud_a;ui.f.aud_b=d.journal.aud_b;}ui.f._init=1;
   return '<div class="scr"><div class="row between small muted"><span>Morgen-Journal</span><span>'+fmtDay(today())+'</span></div><h1 class="h1s">Was hast du gefunden?</h1>'+(()=>{const lb=letzterBesuch();return lb?'<section class="card"><span class="eyebrow">Beim letzten Mal in '+esc(PHASEN[S.phase].name)+'</span><span class="xs muted">'+fmtShort(lb.tag)+'</span><blockquote class="quote" style="font-size:15px">„'+esc(lb.text)+'“</blockquote><p class="xs muted">Dieselbe Frage, ein anderer Tag. Was ist heute anders?</p></section>':'';})()+feld('a',f[0],20)+feld('b',f[1],20)+'<div class="grow"></div><button type="button" class="btn" data-a="journalOk" data-ready="a,b">Weiter zur Tagesskala</button><p class="xs muted" data-why="a,b" aria-live="polite" style="text-align:center"></p></div>';};
@@ -1147,11 +1148,11 @@ const A={
   beginnen:()=>{const T=today();S.created=T;S.phase='probe';S.phaseStart=T;save();go('auto');},
   ankerStart:()=>startSession('anker','gate'),
   telefon:()=>{if(NATIVE&&nat('telefon'))return;toast('Telefon, Uhr und Notruf sind immer frei.');},
-  sesWeiter:()=>{const x=SES&&SES.plan[SES.i];if(x&&x.halten){A.haltenEnde();return;}if(SES&&SES.typ==='breathwork'&&!stepFertig(x)){SES.elapsed=stepDur(x);SES.atemAus=true;stufeEnde();return;}sesWeiter();},
-  warmSkip:()=>{if(SES){SES.warm=0;SES.warmEl=0;SES.last=Date.now();render();}},
+  sesWeiter:()=>{const z=ENGINE.state();const x=z.schritt;if(!x)return;if(x.halten||z.fertig||x.treiber==='frei'){ENGINE.tap();return;}if(istBw())ENGINE.skip();},
+  warmSkip:()=>{ENGINE.warmSkip();},
   gateEinst:()=>{nat('gateEinstellungen');},
-  offenWeiter:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;SES.last=Date.now();tickAn();SES.warm=warmDauer(SES.plan[SES.i],false);SES.warmEl=0;wach();go('session');sesMerken();plog('Übung fortgesetzt: '+SES.typ);},
-  offenEnde:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SES=g.s;plog('Übung beendet nach Unterbrechung: '+SES.typ);sesFertig();},
+  offenWeiter:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SESCTX=g.s;go('session');ENGINE.restore(g.eng,{gates:sesGates()});},
+  offenEnde:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SESCTX=g.s;plog('Übung beendet nach Unterbrechung: '+g.s.typ);ENGINE.restore(g.eng,{gates:sesGates()});ENGINE.ende();},
   offenWeg:()=>{ui.sesOffen=null;try{localStorage.removeItem(SES_KEY);}catch(e){}plog('Unterbrochene Übung verworfen');render();toast('Verworfen.');},
   gateFreiNeu:()=>{ui.gateApps=null;ui.modal={typ:'gateApps'};ui.f.appSuche='';renderOverlay();},
   gateFreiWahl:el=>{const L=S.settings.gateFrei||(S.settings.gateFrei=[]);if(!L.includes(el.dataset.v))L.push(el.dataset.v);ui.modal=null;save();render();toast(appName(el.dataset.v)+' ist im Gate erlaubt.');},
@@ -1160,8 +1161,8 @@ const A={
   protKopie:()=>{kopiere(nat('protokoll')||'').then(()=>toast('Protokoll kopiert.')).catch(()=>toast('Kopieren ist hier nicht möglich.'));},
   testmodus:()=>{S.settings.testmodus=!S.settings.testmodus;if(!S.settings.testmodus)S.sim.offset=0;save();render();},
   theme:el=>{S.settings.theme=el.dataset.v;save();render();},
-  leereGenug:()=>{SES.elapsed=stepDur(SES.plan[SES.i]);sesWeiter();},
-  sesAbbruch:()=>{const typ=SES&&SES.typ;if(typ==='breathwork')nat('musikStopp',500);SES=null;schlaf();sesMerken();plog('Übung abgebrochen: '+typ);go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
+  leereGenug:()=>{ENGINE.skip();},
+  sesAbbruch:()=>{const typ=SESCTX&&SESCTX.typ;ENGINE.abbruch();SESCTX=null;plog('Übung abgebrochen: '+typ);go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
   bnotiz:()=>{ui.bnZurueck=['heute','abend'].includes(ui.route)?ui.route:'begegnung';ui.modal=null;go('bnotiz');},
   bnotizOk:()=>{stopRec();const f=ui.f;const T=today();const d=day();const e={id:uid(),at:hm(now()),kat:f.bKat,gew:f.bGew,rueck:f.bRueck,kon:f.bKon,aus:f.bAus||null,text:(f.bt||'').trim(),aud:f.aud_bt||0,stufe:bStufe()};d.begeg.push(e);
     let msg=e.rueck>0?bRueck(e.rueck)+'× zurückgekehrt. Genau das ist die Übung.':'Notiert. Es jetzt zu bemerken, ist auch eine Rückkehr.';
@@ -1173,8 +1174,9 @@ const A={
   swWeg:el=>{S.begegnung.schwellen=S.begegnung.schwellen.filter(x=>x.id!==el.dataset.v);save();render();},
   bImpulsJa:()=>{const d=day();d.bimp.b++;save();ui.modal=null;render();toast('Bemerkt. Weiter im Gespräch.');},
   bStufeZurueck:()=>{ui.lockern=()=>{S.begegnung.stufe=Math.max(1,bStufe()-1);S.begegnung.stufeAb=today();};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();},
-  begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const wd=document.getElementById('pacer-word');atemSignal(wd&&wd.textContent?wd.textContent:'ein');if(ui.route==='session'&&SES){if(SES.warm>0)render();else{const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}}},
-  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};tickAn();}rerender();},
+  begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const m=S.settings.begleitung;if(m==='ton')ton(396,528,4.6,.11);else if(m==='stimme')sprich('ein');
+    if(ENGINE.laeuft()&&SESCTX){ENGINE.schritte().forEach(y=>{if(y.pacer)y.gates=lageGates(y,SESCTX.typ);});ENGINE.gate('lage',!!S.sim.faceDown);if(ui.route==='session'){const z=ENGINE.state();if(z.phase==='warm')render();else sesPatch(z,true);}}},
+  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};}rerender();},
   audioWeg:el=>{ui.f['aud_'+el.dataset.v]=0;rerender();},
   set:el=>{ui.f[el.dataset.k]=JSON.parse(el.dataset.v);rerender();},
   stich:el=>{const k=el.dataset.k;ui.f[k]=ui.f[k]===el.dataset.v?null:el.dataset.v;rerender();},
@@ -1187,8 +1189,8 @@ const A={
   notausOk:()=>{const d=day();const at=hm(now());const t=(ui.f.na||'').trim();d.notausgang={text:t,stichwort:ui.f.naStich||null,at:at};d.frei=true;d.begr.push({id:uid(),anlass:'notausgang',text:t,stichwort:ui.f.naStich||null,at:at});save();go('frei');},
   uebung:el=>{const id=el.dataset.v;if(id==='schatten'){A.schattenStart();return;}startSession(id,el.dataset.ctx||'heute');},
   empfStart:el=>{const id=el.dataset.v;if(id==='schatten'){A.schattenStart();return;}startSession(id,'zeit');},
-  bwSet:el=>{const b=bwSet();const k=el.dataset.k;b[k]=['atmen','runden','atemzuege'].includes(k)?Number(el.dataset.v):el.dataset.v;if(k!=='modus'&&SES&&SES.typ==='breathwork'&&SES.i===0){SES.plan=uebungPlan('breathwork');}save();render();},
-  haltenEnde:()=>{if(!SES)return;const x=SES.plan[SES.i];if(!x||!x.halten)return;(SES.halten||(SES.halten=[]))[x.runde-1]=Math.round(SES.elapsed);SES.elapsed=stepDur(x);stufeEnde();},
+  bwSet:el=>{const b=bwSet();const k=el.dataset.k;b[k]=['atmen','runden','atemzuege'].includes(k)?Number(el.dataset.v):el.dataset.v;if(istBw()&&ENGINE.state().i===0)ENGINE.format(planZuFormat('breathwork',uebungPlan('breathwork')));save();render();},
+  haltenEnde:()=>{ENGINE.tap();},
   bwMusik:()=>{nat('musikWaehlen');},
   alleToggle:()=>{const d=document.querySelector('details.alle');if(d){d.open=!d.open;ui.alleOffen=d.open;}},
   zeitSet:el=>{const k=el.dataset.k;ui.zeit[k]=k==='t'?Number(el.dataset.v):el.dataset.v;render();},
@@ -1231,7 +1233,7 @@ const A={
   eKurz:el=>{const an=!S.settings.hauptKurz;if(an){ui.lockern=()=>{S.settings.hauptKurz=true;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{S.settings.hauptKurz=false;save();render();}},
   phaseZurueck:()=>{if(S.phase==='probe')return;wechsleZurueck(today());save();render();toast('Jetzt: '+PHASEN[S.phase].name);},
   stammUebernehmen:()=>{const v=stammVorschlag();if(v){S.settings.stamm={tage:v.tage.sort(),zeit:v.zeit};save();toast('Stammfenster: '+v.tage.map(t=>WT[t]).join(', ')+' '+v.zeit);}},
-  confirmOk:()=>{const m=ui.modal;ui.modal=null;if(m.nach==='sesAbbruch'){renderOverlay();A.sesAbbruch();return;}if(m.art==='reset'){const keep=S.sim;S=defaultState();S.sim=keep;SES=null;save();go('auto');toast('Alles zurückgesetzt.');}else if(m.art==='import'&&m.daten){S=mergeState(m.daten);save();go('auto');toast('Backup eingespielt.');}},
+  confirmOk:()=>{const m=ui.modal;ui.modal=null;if(m.nach==='sesAbbruch'){renderOverlay();A.sesAbbruch();return;}if(m.art==='reset'){const keep=S.sim;S=defaultState();S.sim=keep;if(ENGINE.laeuft())ENGINE.abbruch();SESCTX=null;save();go('auto');toast('Alles zurückgesetzt.');}else if(m.art==='import'&&m.daten){S=mergeState(m.daten);save();go('auto');toast('Backup eingespielt.');}},
   impulsJa:()=>{const d=day();d.impulse.b++;save();ui.modal.bemerkt=true;renderOverlay();},
   // Testpanel
   tMorgen:()=>setZeit(nachstMorgen()),
@@ -1241,7 +1243,7 @@ const A={
   tStamm:()=>{const n=now();const [h,m]=S.settings.stamm.zeit.split(':').map(Number);const tage=S.settings.stamm.tage.length?S.settings.stamm.tage:[dow(keyOf(n))];for(let i=0;i<8;i++){const d=new Date(n);d.setDate(d.getDate()+i);d.setHours(h,m,0,0);if(d>n&&tage.includes(dow(keyOf(d)))){setZeit(d);return;}}},
   tSonntag:()=>{const n=now();const d=new Date(n);d.setDate(d.getDate()+((6-dow(keyOf(n)))+7)%7);d.setHours(19,0,0,0);if(d<=n)d.setDate(d.getDate()+7);setZeit(d);},
   tEcht:()=>{S.sim.offset=0;save();go('auto');},
-  pFace:()=>{S.sim.faceDown=!S.sim.faceDown;save();if(ui.route==='session'){const x=SES&&SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}renderPanel();},
+  pFace:()=>{S.sim.faceDown=!S.sim.faceDown;save();ENGINE.gate('lage',S.sim.faceDown);renderPanel();},
   pDemo:()=>{S.settings.demo=!S.settings.demo;save();render();},
   pNfc:()=>{if(ui.route==='gate'){const d=peek(today());if(!d||!d.anker)startSession('anker','nfc');}else toast('Der Aufkleber startet den Morgenanker im Gate.');},
   pImpuls:()=>{if(!S.created){toast('Erst die Probephase beginnen.');return;}const d=day();d.impulse.n++;save();ui.modal={typ:'impuls'};renderOverlay();},
@@ -1271,23 +1273,22 @@ document.addEventListener('click',e=>{ensureAudio();const el=e.target.closest('[
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset&&el.dataset.f){ui.f[el.dataset.f]=el.value;if(el.dataset.f==='appSuche'){ui.appSucheFokus=true;renderOverlay();ui.appSucheFokus=false;return;}live();}});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.ch&&CH[el.dataset.ch])CH[el.dataset.ch](el);});
 document.getElementById('panelToggle').addEventListener('click',()=>{const p=document.getElementById('panel');const o=p.classList.toggle('open');document.getElementById('panelToggle').setAttribute('aria-expanded',o);document.getElementById('panelToggle').textContent=o?'Schließen':'Test';});
-let tickTimer=null;
-function tickAn(){if(!tickTimer)tickTimer=setInterval(tick,200);}
-setInterval(()=>{if(SES||REC)tickAn();else if(tickTimer){clearInterval(tickTimer);tickTimer=null;ui.lastPacer=false;}},1000);
+setInterval(()=>{if(!REC)return;const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent='● '+mss((Date.now()-REC.start)/1000);live();},250);
+document.addEventListener('visibilitychange',()=>ENGINE.gate('sichtbar',!document.hidden));
 setInterval(()=>{if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
 setInterval(renderPanel,1000);
 let natPlanAlt='';
 function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begegnung,echt=keyOf(new Date()),d=peek(echt);const plan={angelegt:true,morgen:s.morgen,stamm:{aktiv:S.phase!=='probe',tage:s.stamm.tage,zeit:s.stamm.zeit},impulse:s.impulse,frage:ANKERFRAGE[S.phase][0],hinweis:ANKERFRAGE[S.phase][1],erlaubt:(s.gateFrei||[]).map(x=>typeof x==='string'?x:x.p),bimp:{n:b.impuls.n,von:b.impuls.von,bis:b.impuls.bis},schwellen:b.schwellen.filter(x=>x.typ==='zeit'&&x.zeit).map(x=>({id:x.id,name:x.name,zeit:x.zeit})),fertig:d&&(d.frei||(d.anker&&d.journal&&d.skala))?echt:''};const j=JSON.stringify(plan);if(j!==natPlanAlt){natPlanAlt=j;nat('plan',j);}}
 function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
 window.punktNativ={
-  lage:b=>{S.sim.faceDown=!!b;if(ui.route==='session'&&SES){const x=SES.plan[SES.i];const stt=document.getElementById('s-status');if(stt&&x)stt.innerHTML=sesStatus(x,stepFertig(x));}},
+  lage:b=>{S.sim.faceDown=!!b;ENGINE.gate('lage',!!b);},
   aktion:a=>{plog('Aktion '+a+' auf '+ui.route);if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
-  hinten:()=>{plog('App im Hintergrund · '+ui.route);if(natTimer){clearTimeout(natTimer);natTimer=null;nat('zustandSichern',JSON.stringify(S));nativePlan();}try{if(ACTX&&ACTX.state==='running')ACTX.suspend();}catch(e){}try{speechSynthesis.cancel();}catch(e){}},
+  hinten:()=>{ENGINE.gate('sichtbar',false);plog('App im Hintergrund · '+ui.route);if(natTimer){clearTimeout(natTimer);natTimer=null;nat('zustandSichern',JSON.stringify(S));nativePlan();}try{if(ACTX&&ACTX.state==='running')ACTX.suspend();}catch(e){}try{speechSynthesis.cancel();}catch(e){}},
   musik:n=>{bwSet().musik=n||null;save();render();if(n)toast('Musik: '+n);},
-  resume:()=>{try{if(ACTX&&ACTX.state==='suspended')ACTX.resume();}catch(e){}plog('Zurück in der App · '+ui.route+(SES?' · Schritt '+(SES.i+1):''));nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
+  resume:()=>{ENGINE.gate('sichtbar',true);try{if(ACTX&&ACTX.state==='suspended')ACTX.resume();}catch(e){}plog('Zurück in der App · '+ui.route+(ENGINE.laeuft()?' · Schritt '+(ENGINE.state().i+1):''));nativeSync();if(['heute','gate'].includes(ui.route)&&!ui.modal)go('auto');else render();},
   zurueck:()=>{if(!S.created)return false;const o=document.getElementById('overlay');if(o&&o.innerHTML){const z=o.querySelector('[data-a="modalZu"]');if(z)z.click();return true;}if(ui.route==='session'){ui.modal={typ:'confirm',titel:'Übung beenden?',text:'Die Zeit bis hierher zählt nicht als Übung.',ok:'Beenden',nach:'sesAbbruch'};renderOverlay();return true;}if(gateAktiv())return true;if(ui.route!=='heute'){go('heute');return true;}return false;}
 };
-try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&S.created&&Date.now()-g.at<20*60000){SES=g.s;SES.last=Date.now();ui.route='session';wach();tickAn();ui.sesWieder=true;}else if(g&&g.s&&S.created&&keyOf(new Date(g.at))===keyOf(new Date()))ui.sesOffen=g;else localStorage.removeItem(SES_KEY);}catch(e){}
+try{const g=JSON.parse(localStorage.getItem(SES_KEY)||'null');if(g&&g.s&&g.eng&&S.created&&Date.now()-g.at<20*60000){SESCTX=g.s;ui.route='session';ENGINE.restore(g.eng,{gates:sesGates()});ui.sesWieder=true;}else if(g&&g.s&&g.eng&&S.created&&keyOf(new Date(g.at))===keyOf(new Date()))ui.sesOffen=g;else localStorage.removeItem(SES_KEY);}catch(e){}
 render();
 initCaps();
 plog('Seite geladen · '+ui.route+(ui.sesWieder?' · Übung fortgesetzt':''));if(ui.sesWieder)toast('Übung fortgesetzt.');

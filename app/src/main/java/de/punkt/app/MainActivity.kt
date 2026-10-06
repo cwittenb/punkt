@@ -190,12 +190,14 @@ class MainActivity : Activity() {
 
     // Im Hintergrund schweigt die Begleitung; die Web-Oberfläche meldet sich als verborgen
     override fun onStop() {
-        tts?.stop()
+        sprichStopp()
         web.onPause()
         super.onStop()
     }
 
     override fun onDestroy() {
+        geladen = false
+        if (Laufzeit.aktivitaet?.get() === this) Laufzeit.aktivitaet = null
         Protokoll.schreib(this, "App beendet" + (if (isFinishing) " (geschlossen)" else "") + (if (isChangingConfigurations) " (Konfiguration)" else ""))
         wach(false)
         recorder.stopp()
@@ -292,25 +294,45 @@ class MainActivity : Activity() {
         window.attributes = lp
     }
 
+    // Ansagen, die vor der Bereitschaft der Sprachausgabe kamen; sonst ginge die erste verloren
+    private val ttsOffen = ArrayList<String>()
+
     private fun ttsVorbereiten() {
         if (tts != null) return
         tts = TextToSpeech(this) { st ->
-            if (st == TextToSpeech.SUCCESS) {
-                tts?.language = Locale.GERMANY
-                tts?.setSpeechRate(0.8f)
-                ttsBereit = true
+            runOnUiThread {
+                val t = tts ?: return@runOnUiThread
+                if (st == TextToSpeech.SUCCESS) {
+                    t.language = Locale.GERMANY
+                    t.setSpeechRate(0.8f)
+                    ttsBereit = true
+                    ttsOffen.forEach { t.speak(it, TextToSpeech.QUEUE_ADD, null, "punkt") }
+                } else {
+                    Protokoll.schreib(this, "Sprachausgabe nicht verfügbar")
+                }
+                ttsOffen.clear()
             }
         }
     }
 
+    /** Reiht die Ansage ein. Die Web-Engine spricht nacheinander, deshalb QUEUE_ADD. */
     fun sprich(w: String): Boolean {
-        val t = tts
-        if (t == null || !ttsBereit) {
-            runOnUiThread { ttsVorbereiten() }
-            return false
+        runOnUiThread {
+            val t = tts
+            if (t != null && ttsBereit) t.speak(w, TextToSpeech.QUEUE_ADD, null, "punkt")
+            else {
+                if (ttsOffen.size < 3) ttsOffen.add(w)
+                ttsVorbereiten()
+            }
         }
-        t.speak(w, TextToSpeech.QUEUE_FLUSH, null, "punkt")
         return true
+    }
+
+    fun sprichStopp() {
+        runOnUiThread {
+            ttsOffen.clear()
+            tts?.stop()
+        }
     }
 
     /** Statusleiste und Navigationsleiste in der Farbe des Bildschirms. */

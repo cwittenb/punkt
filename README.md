@@ -70,4 +70,8 @@ app/src/main/java/de/punkt/app/
 
 Die Web-App erkennt die Hülle an `window.PunktNative` und läuft ohne sie unverändert im Browser.
 
-Die Web-App liegt einmal in `web/punkt.html`, identisch mit der Web-Version. `python3 tools/web.py` baut daraus `app/src/main/assets/web/index.html`: mit Dokumentgerüst und ohne Google Fonts. Die Build-Pipeline macht das vor jedem Build selbst.
+Die Web-App liegt einmal in `web/punkt.html`, identisch mit der Web-Version. Die Übungslogik (Schritte, Takt, Pausen, Ansagen) liegt getrennt in `web/engine.js` und wird per `<script src>` geladen. `python3 tools/web.py` baut daraus `app/src/main/assets/web/index.html`: mit Dokumentgerüst, ohne Google Fonts und mit eingebetteter Engine. Die Build-Pipeline macht das vor jedem Build selbst.
+
+### Begleitungs-Engine (`web/engine.js`)
+
+Eine Übung ist eine Folge von Schritten. Jeder Schritt hat einen Treiber (`zeit`, `atem`, `halten`, `frei`), ein Ende (`auto` oder `tap`), Gates (`lage` = Display unten; `sichtbar` gilt immer), optional Ansage, Cues und Musik. Die Engine hält genau eine Uhr (Schrittzeit als Summe der Laufabschnitte), genau einen Zustandsautomaten (`warm → running/paused → stepDone → …`) und eine Sprachwarteschlange (Ansage vor Cue vor Atemwort). Hintergrund und Display-oben sind Pausen, die Uhr steht. Tippen kurz nach einem Schrittwechsel wird verworfen. `planZuFormat()` in `punkt.html` übersetzt die Pläne (`ankerPlan`, `hauptPlan`, `uebungPlan`) in Engine-Schritte; neue Formate sind neue Schrittlisten, keine neue Logik.

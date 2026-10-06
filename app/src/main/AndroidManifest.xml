@@ -31,6 +31,10 @@
         <intent>
             <action android:name="android.intent.action.DIAL" />
         </intent>
+        <!-- Spracherkennung auf dem Gerät fürs Diktat -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 
     <application

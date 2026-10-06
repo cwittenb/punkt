@@ -541,7 +541,7 @@ let REC=null;
 const GATE_OK=['gate','session','journal','skala','notausgang','frei','start','bnotiz'];
 function gateAktiv(){if(!S.created)return false;const n=now();if(n.getHours()<S.settings.morgen)return false;const d=peek(today());return !(d&&d.frei);}
 function autoRoute(){if(!S.created)return 'start';if(gateAktiv()){const d=peek(today());if(!d||!d.anker)return 'gate';if(!d.journal)return 'journal';if(!d.skala)return 'skala';}return 'heute';}
-function go(r,keep){if(REC){if(NATIVE)nat('aufnahmeStopp');REC=null;}if(r==='auto')r=autoRoute();if(gateAktiv()&&!GATE_OK.includes(r))r=autoRoute();ui.route=r;if(!keep)ui.f={};render();const a=document.getElementById('app');if(a)a.scrollTop=0;}
+function go(r,keep){stopRec();if(r==='auto')r=autoRoute();if(gateAktiv()&&!GATE_OK.includes(r))r=autoRoute();ui.route=r;if(!keep)ui.f={};render();const a=document.getElementById('app');if(a)a.scrollTop=0;}
 function fragen(){return FRAGEN[S.phase];}
 function minAudio(){return S.settings.demo?5:15;}
 function secPerMin(){return S.settings.demo?5:60;}
@@ -650,17 +650,22 @@ const INFO={
 function ibtn(key){return '<button type="button" class="ibtn" data-a="info" data-v="'+key+'" aria-expanded="'+!!ui.info[key]+'" aria-controls="i-'+key+'" aria-label="Erklärung zur Frage"><span aria-hidden="true">i</span></button>';}
 function hintP(key,text){return text&&ui.info[key]?'<p class="hint" id="i-'+key+'">'+esc(text)+'</p>':'';}
 function qlab(key,text,id,extra){const info=INFO[text];return '<div class="labrow"><p class="lab"'+(id?' id="'+id+'"':'')+'>'+esc(text)+(extra||'')+'</p>'+(info?ibtn(key):'')+'</div>'+hintP(key,info);}
-function recEnde(){if(!REC)return;let sek=Math.round((Date.now()-REC.start)/1000);if(NATIVE){const n=nat('aufnahmeStopp');if(typeof n==='number'&&n>0)sek=n;}ui.f['aud_'+REC.key]=(ui.f['aud_'+REC.key]||0)+sek;REC=null;}
-function stopRec(){recEnde();}
+function recEnde(){if(!REC||REC.diktat)return;let sek=Math.round((Date.now()-REC.start)/1000);if(NATIVE){const n=nat('aufnahmeStopp');if(typeof n==='number'&&n>0)sek=n;}const k=REC.key;ui.f['aud_'+k]=(ui.f['aud_'+k]||0)+sek;if(REC.name)ui.f['audn_'+k]=(ui.f['audn_'+k]||[]).concat(REC.name);REC=null;}
+/** Beendet Aufnahme oder Diktat. Beim Diktat steht der erkannte Text schon im Feld. */
+function stopRec(){if(REC&&REC.diktat){nat('diktatStopp');REC=null;return;}recEnde();}
+function aufnahmeStart(k){const name=today()+'-'+k+'-'+Date.now();if(NATIVE&&!nat('aufnahme',name)){ui.micOffen=k;toast('Erlaube das Mikrofon, dann startet die Aufnahme.');return;}REC={key:k,start:Date.now(),name:name};rerender();}
+function diktatStart(k){if(!nat('diktatStart',k)){ui.micOffen=k;toast('Erlaube das Mikrofon, dann geht es los.');return;}const v=(ui.f[k]||'').trim();REC={key:k,start:Date.now(),diktat:true,basis:v?v+' ':'',fest:''};rerender();}
+/** Erkannter Text ins Feld, ohne neu zu zeichnen: Cursor und Tastatur bleiben, wo sie sind. */
+function diktatFeld(R,t){const gross=!R.basis||/[.!?]\s*$/.test(R.basis);if(gross&&t)t=t.charAt(0).toUpperCase()+t.slice(1);const v=R.basis+t;ui.f[R.key]=v;const ta=document.querySelector('[data-f="'+R.key+'"]');if(ta){ta.value=v;ta.scrollTop=ta.scrollHeight;}live();}
 function audSek(key){return (ui.f['aud_'+key]||0)+(REC&&REC.key===key?(Date.now()-REC.start)/1000:0);}
 
 function tabs(akt){const t=[['heute','Heute',ICON.home],['begegnung','Begegnung',ICON.people],['tagebuch','Journal',ICON.book],['check','Check',ICON.pulse],['einst','Optionen',ICON.gear]];
   return '<nav class="tabs" aria-label="Hauptnavigation">'+t.map(x=>'<button type="button" class="tab '+(akt===x[0]?'on':'')+'" data-a="go" data-v="'+x[0]+'" '+(akt===x[0]?'aria-current="page"':'')+'>'+x[2]+'<span>'+x[1]+'</span></button>').join('')+'</nav>';}
-function feld(key,label,min,opt){opt=opt||{};const v=ui.f[key]||'';const aud=ui.f['aud_'+key]||0;const rec=REC&&REC.key===key;const mic=opt.mic!==false;
+function feld(key,label,min,opt){opt=opt||{};const v=ui.f[key]||'';const aud=ui.f['aud_'+key]||0;const rec=REC&&REC.key===key;const dik=rec&&REC.diktat;const mic=opt.mic!==false;
   const infoText=opt.info||INFO[label];const info=infoText?ibtn(key):'';
-  return '<div class="feld"><div class="labrow"><label for="f-'+key+'" class="lab">'+esc(label)+'</label>'+info+'</div>'+hintP(key,infoText)+'<div class="ta-wrap"><textarea id="f-'+key+'" class="'+(mic?'':'short')+'" data-f="'+key+'" data-min="'+(min||0)+'" data-mic="'+(mic?1:0)+'" placeholder="'+esc(opt.ph||(mic?'Schreib, oder tippe aufs Mikrofon …':'Ein ehrlicher Satz …'))+'">'+esc(v)+'</textarea>'+
-  (mic?(rec?'<span class="recpill" data-rec-pill="'+key+'">● 0:00</span>':'')+'<button type="button" class="mic '+(rec?'on':'')+'" data-a="mic" data-v="'+key+'" aria-label="'+(rec?'Aufnahme stoppen':'Antwort sprechen')+'">'+(rec?ICON.stop:ICON.mic)+'</button>':'')+'</div>'+
-  (aud>0?'<div class="audio"><span class="play">'+ICON.play+'</span><div class="col grow" style="gap:0"><strong class="small">Sprachnotiz '+mss(aud)+'</strong><span class="xs muted">'+(NATIVE?'auf dem Handy gespeichert':'simuliert, der Browser gibt kein Mikrofon frei')+'</span></div><button type="button" class="icon" data-a="audioWeg" data-v="'+key+'" aria-label="Sprachnotiz löschen">'+ICON.x+'</button></div>':'')+
+  return '<div class="feld"><div class="labrow"><label for="f-'+key+'" class="lab">'+esc(label)+'</label>'+info+'</div>'+hintP(key,infoText)+'<div class="ta-wrap"><textarea id="f-'+key+'" class="'+(mic?'':'short')+'" data-f="'+key+'" data-min="'+(min||0)+'" data-mic="'+(mic?1:0)+'"'+(dik?' readonly aria-busy="true"':'')+' placeholder="'+esc(opt.ph||(mic?'Schreib, oder tippe aufs Mikrofon …':'Ein ehrlicher Satz …'))+'">'+esc(v)+'</textarea>'+
+  (mic?(rec?'<span class="recpill" data-rec-pill="'+key+'">'+(dik?'● Diktat 0:00':'● 0:00')+'</span>':'')+'<button type="button" class="mic '+(rec?'on':'')+'" data-a="mic" data-v="'+key+'" aria-label="'+(dik?'Diktat beenden':rec?'Aufnahme stoppen':'Antwort sprechen')+'">'+(rec?ICON.stop:ICON.mic)+'</button>':'')+'</div>'+
+  (aud>0?'<div class="audio"><span class="play">'+ICON.play+'</span><div class="col grow" style="gap:0"><strong class="small">Sprachnotiz '+mss(aud)+'</strong><span class="xs muted">'+(NATIVE?'auf dem Handy gespeichert, nicht transkribiert':'simuliert, der Browser gibt kein Mikrofon frei')+'</span></div><button type="button" class="icon" data-a="audioWeg" data-v="'+key+'" aria-label="Sprachnotiz löschen">'+ICON.x+'</button></div>':'')+
   '<span class="info" data-info="'+key+'"></span></div>';}
 function fieldOk(key){const el=document.querySelector('[data-f="'+key+'"]');const min=el?Number(el.dataset.min||0):0;const t=(ui.f[key]||'').trim().length;const aud=audSek(key);const mic=el?el.dataset.mic==='1':false;return t>=min||(mic&&min>0&&aud>=minAudio());}
 function live(){
@@ -724,7 +729,7 @@ V.session=()=>{const s=SESCTX;const z=ENGINE.state();if(!s||!z.schritt)return V.
   (x.leere&&!z.fertig?'<button type="button" class="btn sec small" data-a="leereGenug">Genug für heute. Zählt als geschafft.</button>':'')+'</section>'+
   '<button type="button" class="btn" data-a="sesWeiter" '+(z.fertig||x.treiber==='frei'||(s.typ==='breathwork'&&!x.halten)?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
 
-V.journal=()=>{const f=fragen();const d=day();if(d.journal&&!ui.f._init){ui.f.a=d.journal.a;ui.f.b=d.journal.b;ui.f.aud_a=d.journal.aud_a;ui.f.aud_b=d.journal.aud_b;}ui.f._init=1;
+V.journal=()=>{const f=fragen();const d=day();if(d.journal&&!ui.f._init){ui.f.a=d.journal.a;ui.f.b=d.journal.b;ui.f.aud_a=d.journal.aud_a;ui.f.aud_b=d.journal.aud_b;ui.f.audn_a=d.journal.audn_a;ui.f.audn_b=d.journal.audn_b;}ui.f._init=1;
   return '<div class="scr"><div class="row between small muted"><span>Morgen-Journal</span><span>'+fmtDay(today())+'</span></div><h1 class="h1s">Was hast du gefunden?</h1>'+(()=>{const lb=letzterBesuch();return lb?'<section class="card"><span class="eyebrow">Beim letzten Mal in '+esc(PHASEN[S.phase].name)+'</span><span class="xs muted">'+fmtShort(lb.tag)+'</span><blockquote class="quote" style="font-size:15px">„'+esc(lb.text)+'“</blockquote><p class="xs muted">Dieselbe Frage, ein anderer Tag. Was ist heute anders?</p></section>':'';})()+feld('a',f[0],20)+feld('b',f[1],20)+'<div class="grow"></div><button type="button" class="btn" data-a="journalOk" data-ready="a,b">Weiter zur Tagesskala</button><p class="xs muted" data-why="a,b" aria-live="polite" style="text-align:center"></p></div>';};
 
 V.skala=()=>{const d=day();if(d.skala&&!ui.f._init){ITEMS.forEach(i=>{ui.f['sk_'+i.k]=d.skala[i.k];});}ui.f._init=1;const alle=ITEMS.every(i=>ui.f['sk_'+i.k]!=null);
@@ -1082,7 +1087,9 @@ async function speichereDatei(name,data){if(NATIVE){toast(nat('speichere',name,d
   try{await kopiere(data);toast('Speichern ist hier nicht möglich. Der Inhalt liegt in der Zwischenablage.');}catch(e){toast('Speichern und Kopieren sind in dieser Ansicht nicht möglich.');}}
 
 /* ---------- Modals ---------- */
-function renderOverlay(){const o=document.getElementById('overlay');const m=ui.modal||(S.pending?{typ:'begr',anlass:S.pending.anlass,then:'gateAus'}:null);if(!m){o.innerHTML='';return;}
+function renderOverlay(){const ov=document.getElementById('overlay'),o=document.createElement('div');overlayZeichnen(o);if(!o.innerHTML||!ov.firstChild)ov.innerHTML=o.innerHTML;else morph(ov,o.innerHTML);
+  const si=document.getElementById('f-appSuche');if(si&&ui.appSucheFokus&&document.activeElement!==si){si.focus();si.setSelectionRange(si.value.length,si.value.length);}}
+function overlayZeichnen(o){const m=ui.modal||(S.pending?{typ:'begr',anlass:S.pending.anlass,then:'gateAus'}:null);if(!m){o.innerHTML='';return;}
   if(m.typ==='begr'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mb-t"><span class="eyebrow">'+esc(ANLASS[m.anlass])+'</span><h2 class="h2" id="mb-t">'+esc(ANLASS_FRAGE[m.anlass])+'</h2>'+feld('mb','Ein Satz, mindestens 20 Zeichen',20,{mic:false})+'<p class="lab">Stichwort <span class="muted" style="font-weight:400">· optional</span></p>'+stichChips('mbStich')+'<button type="button" class="btn" data-a="mbOk" data-ready="mb">Speichern</button>'+(m.then==='gateAus'?'':'<button type="button" class="link quiet" data-a="modalZu">Abbrechen</button>')+'</div></div>';}
   else if(m.typ==='notiz'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mn-t"><h2 class="h2" id="mn-t">Schnellnotiz</h2>'+feld('mn','Was ist gerade da?',0)+'<div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Abbrechen</button><button type="button" class="btn" data-a="notizOk">Speichern</button></div></div></div>';}
   else if(m.typ==='scheitern'){o.innerHTML='<div class="modalbg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ms-t"><h2 class="h2" id="ms-t">Scheitern riskiert</h2><p class="small muted">Etwas Ungeübtes vor anderen, oder zu Hause einen Fehler zugegeben, ohne ihn zu erklären.</p>'+feld('ms','Was hast du riskiert, und wem ist es geschehen?',0)+'<div class="btnrow"><button type="button" class="btn sec" data-a="modalZu">Abbrechen</button><button type="button" class="btn" data-a="scheiternOk">Speichern</button></div></div></div>';}
@@ -1102,7 +1109,24 @@ function renderOverlay(){const o=document.getElementById('overlay');const m=ui.m
 
 /* ---------- Render ---------- */
 function applyTheme(){const t=S.settings.theme,r=document.documentElement;r.classList.toggle('testmodus',!!S.settings.testmodus);if(t==='hell')r.dataset.theme='light';else if(t==='dunkel')r.dataset.theme='dark';else if(NATIVE){const d=nat('dunkel');if(d===true)r.dataset.theme='dark';else if(d===false)r.dataset.theme='light';else delete r.dataset.theme;}else delete r.dataset.theme;}
-function render(){applyTheme();const app=document.getElementById('app');let r=ui.route;if(r==='auto'){r=autoRoute();ui.route=r;}const fn=V[r]||V.heute;app.innerHTML=fn();renderOverlay();live();renderPanel();}
+/* ---------- DOM abgleichen statt ersetzen ----------
+   Innerhalb einer Ansicht werden nur geänderte Knoten angefasst. Das fokussierte Feld behält Wert,
+   Cursor und Tastatur. Ein Ansichtswechsel ersetzt weiter alles (frischer Aufbau, Scroll oben). */
+function morph(ziel,html){const t=document.createElement(ziel.tagName);t.innerHTML=html;kinderAbgleichen(ziel,t);}
+function kinderAbgleichen(a,b){const neu=Array.from(b.childNodes);for(let i=0;i<neu.length;i++){const x=a.childNodes[i];if(!x)a.appendChild(neu[i]);else knotenAbgleichen(x,neu[i]);}while(a.childNodes.length>neu.length)a.removeChild(a.lastChild);}
+function gleicherKnoten(x,y){if(x.nodeType!==y.nodeType||x.nodeName!==y.nodeName)return false;if(x.nodeType!==1)return true;return (x.id||'')===(y.id||'')&&(x.getAttribute('data-f')||'')===(y.getAttribute('data-f')||'');}
+function knotenAbgleichen(x,y){
+  if(!gleicherKnoten(x,y)){x.replaceWith(y);return;}
+  if(x.nodeType!==1){if(x.nodeValue!==y.nodeValue)x.nodeValue=y.nodeValue;return;}
+  for(const at of Array.from(x.attributes))if(!y.hasAttribute(at.name))x.removeAttribute(at.name);
+  for(const at of Array.from(y.attributes))if(x.getAttribute(at.name)!==at.value)x.setAttribute(at.name,at.value);
+  const fokus=x===document.activeElement,tag=x.tagName;
+  if(tag==='TEXTAREA'){if(!fokus&&x.value!==y.value)x.value=y.value;return;}
+  if(tag==='INPUT'){if(x.type==='checkbox'||x.type==='radio')x.checked=y.checked;else if(x.type!=='file'&&!fokus&&x.value!==y.value)x.value=y.value;return;}
+  if(tag==='SELECT'){const v=y.value;kinderAbgleichen(x,y);if(!fokus)x.value=v;return;}
+  if(tag==='DETAILS')x.open=y.open;
+  kinderAbgleichen(x,y);}
+function render(){applyTheme();const app=document.getElementById('app');let r=ui.route;if(r==='auto'){r=autoRoute();ui.route=r;}const fn=V[r]||V.heute;const html=fn();if(app.dataset.r!==r||!app.firstChild){app.innerHTML=html;app.dataset.r=r;}else morph(app,html);renderOverlay();live();renderPanel();}
 function gateApps(){if(!ui.gateApps){try{ui.gateApps=JSON.parse(nat('apps')||'[]');}catch(e){ui.gateApps=[];}}return ui.gateApps;}
 function appName(p){const a=gateApps().find(x=>x.p===p);return a?a.n:p;}
 function gateFreiHtml(){const L=S.settings.gateFrei||[];return '<p class="lab" style="margin:0">Im Gate erlaubt</p><p class="xs muted" style="margin:0">Telefon, Kontakte, Uhr, Notruf und Einstellungen sind immer frei.</p><div class="row wrap">'+L.map(p=>'<button type="button" class="chip" data-a="gateFreiWeg" data-v="'+esc(p)+'" style="border:0;cursor:pointer" aria-label="'+esc(appName(p))+' entfernen">'+esc(appName(p))+' ×</button>').join('')+'<button type="button" class="chip purple" data-a="gateFreiNeu" style="border:0;cursor:pointer">+ App</button></div>';}
@@ -1177,11 +1201,11 @@ const A={
   bStufeZurueck:()=>{ui.lockern=()=>{S.begegnung.stufe=Math.max(1,bStufe()-1);S.begegnung.stufeAb=today();};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();},
   begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const m=S.settings.begleitung;if(m==='ton')ton(396,528,4.6,.11);else if(m==='stimme')sprich('ein');
     if(ENGINE.laeuft()&&SESCTX){ENGINE.schritte().forEach(y=>{if(y.pacer)y.gates=lageGates(y,SESCTX.typ);});ENGINE.gate('lage',!!S.sim.faceDown);if(ui.route==='session'){const z=ENGINE.state();if(z.phase==='warm')render();else sesPatch(z,true);}}},
-  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){ui.micOffen=k;toast('Erlaube das Mikrofon, dann startet die Aufnahme.');return;}REC={key:k,start:Date.now()};}rerender();},
-  audioWeg:el=>{ui.f['aud_'+el.dataset.v]=0;rerender();},
+  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){if(REC.diktat){if(!REC.stoppt){REC.stoppt=true;nat('diktatStopp');}}else recEnde();rerender();return;}stopRec();if(NATIVE&&nat('diktatMoeglich')===true)diktatStart(k);else aufnahmeStart(k);},
+  audioWeg:el=>{const k=el.dataset.v,n=ui.f['audn_'+k]||[];if(NATIVE&&n.length)nat('aufnahmeLoeschen',JSON.stringify(n));ui.f['audn_'+k]=[];ui.f['aud_'+k]=0;rerender();},
   set:el=>{ui.f[el.dataset.k]=JSON.parse(el.dataset.v);rerender();},
   stich:el=>{const k=el.dataset.k;ui.f[k]=ui.f[k]===el.dataset.v?null:el.dataset.v;rerender();},
-  journalOk:()=>{stopRec();const d=day();d.journal={a:(ui.f.a||'').trim(),b:(ui.f.b||'').trim(),aud_a:ui.f.aud_a||0,aud_b:ui.f.aud_b||0,fragen:fragen(),at:hm(now())};save();go('skala');},
+  journalOk:()=>{stopRec();const d=day();d.journal={a:(ui.f.a||'').trim(),b:(ui.f.b||'').trim(),aud_a:ui.f.aud_a||0,aud_b:ui.f.aud_b||0,audn_a:ui.f.audn_a||[],audn_b:ui.f.audn_b||[],fragen:fragen(),at:hm(now())};save();go('skala');},
   skalaOk:()=>{const d=day();d.skala={};ITEMS.forEach(i=>{d.skala[i.k]=ui.f['sk_'+i.k];});d.frei=true;
     const T=today(),from=addDays(T,-6),warn={k:0,w:0,g:0,s:0,u:0};for(const k of range(from,T)){const x=peek(k);if(x&&x.skala)for(const y of Object.keys(warn))if(istWarn(y,x.skala[y]))warn[y]++;}
     let msg='Frei für heute.';if(warn.w>=5&&erhoeheAmpel('rot',haeufText('w',warn.w)))msg='Ab morgen Ampel rot: '+haeufText('w',warn.w)+'.';
@@ -1208,7 +1232,7 @@ const A={
   notizOk:()=>{stopRec();const t=(ui.f.mn||'').trim();const aud=ui.f.aud_mn||0;if(t||aud)day().notizen.push({at:hm(now()),text:t,aud:aud});ui.modal=null;ui.f={};save();render();toast('Notiz gespeichert.');},
   scheitern:()=>{ui.modal={typ:'scheitern'};ui.f={};renderOverlay();},
   scheiternOk:()=>{day().haupt.push({typ:'scheitern',min:0,at:hm(now()),text:(ui.f.ms||'').trim()});ui.modal=null;ui.f={};save();render();toast('Eingetragen.');},
-  abendOk:()=>{stopRec();day().abend={a:(ui.f.ea||'').trim(),b:(ui.f.eb||'').trim(),aud_a:ui.f.aud_ea||0,aud_b:ui.f.aud_eb||0,at:hm(now())};save();go('heute');toast('Abend-Rückschau gespeichert.');},
+  abendOk:()=>{stopRec();day().abend={a:(ui.f.ea||'').trim(),b:(ui.f.eb||'').trim(),aud_a:ui.f.aud_ea||0,aud_b:ui.f.aud_eb||0,audn_a:ui.f.audn_ea||[],audn_b:ui.f.audn_eb||[],at:hm(now())};save();go('heute');toast('Abend-Rückschau gespeichert.');},
   schattenStart:()=>{ensureAudio();ui.schatten={i:0};go('schatten');},
   schattenWeiter:()=>{ui.schatten.i++;rerender();},
   schattenZurueck:()=>{ui.schatten.i=Math.max(0,ui.schatten.i-1);rerender();},
@@ -1274,7 +1298,7 @@ document.addEventListener('click',e=>{ensureAudio();const el=e.target.closest('[
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset&&el.dataset.f){ui.f[el.dataset.f]=el.value;if(el.dataset.f==='appSuche'){ui.appSucheFokus=true;renderOverlay();ui.appSucheFokus=false;return;}live();}});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.ch&&CH[el.dataset.ch])CH[el.dataset.ch](el);});
 document.getElementById('panelToggle').addEventListener('click',()=>{const p=document.getElementById('panel');const o=p.classList.toggle('open');document.getElementById('panelToggle').setAttribute('aria-expanded',o);document.getElementById('panelToggle').textContent=o?'Schließen':'Test';});
-setInterval(()=>{if(!REC)return;const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent='● '+mss((Date.now()-REC.start)/1000);live();},250);
+setInterval(()=>{if(!REC)return;const p=document.querySelector('[data-rec-pill="'+REC.key+'"]');if(p)p.textContent=(REC.diktat?'● Diktat ':'● ')+mss((Date.now()-REC.start)/1000);live();},250);
 document.addEventListener('visibilitychange',()=>ENGINE.gate('sichtbar',!document.hidden));
 setInterval(()=>{if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
 setInterval(()=>{const p=document.getElementById('panel');if(p&&p.classList.contains('open'))renderPanel();},1000);
@@ -1283,6 +1307,12 @@ function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begeg
 function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
 window.punktNativ={
   lage:b=>{S.sim.faceDown=!!b;ENGINE.gate('lage',!!b);},
+  diktat:e=>{const R=REC;if(!R||!R.diktat||R.key!==e.key)return;
+    if(e.art==='teil')diktatFeld(R,R.fest?R.fest+' '+e.text:e.text);
+    else if(e.art==='satz'){R.fest=R.fest?R.fest+' '+e.text:e.text;diktatFeld(R,R.fest);}
+    else if(e.art==='ende'){REC=null;rerender();}
+    else if(e.art==='fehler'){REC=null;if(e.grund==='mikrofon'){toast('Das Mikrofon ist nicht freigegeben.');rerender();return;}
+      toast(e.grund==='sprachpaket'?'Das deutsche Sprachpaket wird noch geladen. Bis dahin wird als Sprachnotiz aufgenommen.':'Diktat geht gerade nicht. Es wird als Sprachnotiz aufgenommen.');aufnahmeStart(e.key);}},
   mikro:frei=>{const k=ui.micOffen;ui.micOffen=null;if(!k)return;if(frei){const el=document.querySelector('[data-a="mic"][data-v="'+k+'"]');if(el)A.mic(el);}else toast('Ohne Mikrofon gibt es keine Sprachaufnahme. Schreiben geht immer.');},
   aktion:a=>{plog('Aktion '+a+' auf '+ui.route);if(!S.created||ui.route==='session')return false;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return true;}if(a==='nfc'){A.pNfc();return true;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return true;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return true;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return true;}if(a==='abend'){go('abend');return true;}if(a==='stamm'){go('heute');return true;}go('auto');return true;},
   hinten:()=>{ENGINE.gate('sichtbar',false);plog('App im Hintergrund · '+ui.route);if(natTimer){clearTimeout(natTimer);natTimer=null;nat('zustandSichern',JSON.stringify(S));nativePlan();}try{if(ACTX&&ACTX.state==='running')ACTX.suspend();}catch(e){}try{speechSynthesis.cancel();}catch(e){}},
@@ -1295,6 +1325,7 @@ render();
 initCaps();
 plog('Seite geladen · '+ui.route+(ui.sesWieder?' · Übung fortgesetzt':''));if(ui.sesWieder)toast('Übung fortgesetzt.');
 let natLeisteAlt='';
-function natLeiste(){try{const e=document.querySelector('#app .scr');let c=e?getComputedStyle(e).backgroundColor:'';if(!c||c==='rgba(0, 0, 0, 0)')c=getComputedStyle(document.body).backgroundColor;if(c!==natLeisteAlt){natLeisteAlt=c;nat('leiste',c);}}catch(e){}}
+let natLeisteKey='';
+function natLeiste(){try{const e=document.querySelector('#app .scr');const key=ui.route+'|'+(e?e.className:'')+'|'+(document.documentElement.dataset.theme||'');if(key===natLeisteKey)return;natLeisteKey=key;let c=e?getComputedStyle(e).backgroundColor:'';if(!c||c==='rgba(0, 0, 0, 0)')c=getComputedStyle(document.body).backgroundColor;if(c!==natLeisteAlt){natLeisteAlt=c;nat('leiste',c);}}catch(e){}}
 if(NATIVE){const renderOhne=render;render=function(){renderOhne.apply(this,arguments);natLeiste();};nativeSync();nativePlan();natLeiste();}
 </script>

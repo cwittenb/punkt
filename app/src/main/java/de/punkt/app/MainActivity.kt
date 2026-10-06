@@ -250,6 +250,15 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_MIKRO) {
+            val frei = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            Protokoll.schreib(this, if (frei) "Mikrofon freigegeben" else "Mikrofon abgelehnt")
+            js("window.punktNativ&&window.punktNativ.mikro&&window.punktNativ.mikro($frei)")
+        }
+    }
+
     private fun mitteilungenErlauben() {
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
         val p = Speicher.prefs(this)

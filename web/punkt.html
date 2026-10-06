@@ -1176,7 +1176,7 @@ const A={
   bStufeZurueck:()=>{ui.lockern=()=>{S.begegnung.stufe=Math.max(1,bStufe()-1);S.begegnung.stufeAb=today();};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();},
   begleitung:el=>{ensureAudio();S.settings.begleitung=el.dataset.v;save();document.querySelectorAll('[data-a="begleitung"]').forEach(b=>{const on=b.dataset.v===el.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});const m=S.settings.begleitung;if(m==='ton')ton(396,528,4.6,.11);else if(m==='stimme')sprich('ein');
     if(ENGINE.laeuft()&&SESCTX){ENGINE.schritte().forEach(y=>{if(y.pacer)y.gates=lageGates(y,SESCTX.typ);});ENGINE.gate('lage',!!S.sim.faceDown);if(ui.route==='session'){const z=ENGINE.state();if(z.phase==='warm')render();else sesPatch(z,true);}}},
-  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){toast('Das Mikrofon ist nicht freigegeben. Erlaube es und tippe noch einmal.');return;}REC={key:k,start:Date.now()};}rerender();},
+  mic:el=>{const k=el.dataset.v;if(REC&&REC.key===k){recEnde();}else{if(REC)recEnde();if(NATIVE&&!nat('aufnahme',today()+'-'+k+'-'+Date.now())){ui.micOffen=k;toast('Erlaube das Mikrofon, dann startet die Aufnahme.');return;}REC={key:k,start:Date.now()};}rerender();},
   audioWeg:el=>{ui.f['aud_'+el.dataset.v]=0;rerender();},
   set:el=>{ui.f[el.dataset.k]=JSON.parse(el.dataset.v);rerender();},
   stich:el=>{const k=el.dataset.k;ui.f[k]=ui.f[k]===el.dataset.v?null:el.dataset.v;rerender();},
@@ -1282,6 +1282,7 @@ function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begeg
 function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
 window.punktNativ={
   lage:b=>{S.sim.faceDown=!!b;ENGINE.gate('lage',!!b);},
+  mikro:frei=>{const k=ui.micOffen;ui.micOffen=null;if(!k)return;if(frei){const el=document.querySelector('[data-a="mic"][data-v="'+k+'"]');if(el)A.mic(el);}else toast('Ohne Mikrofon gibt es keine Sprachaufnahme. Schreiben geht immer.');},
   aktion:a=>{plog('Aktion '+a+' auf '+ui.route);if(!S.created||ui.route==='session')return;if(a==='gate'){if(!GATE_OK.includes(ui.route))go('auto');return;}if(a==='nfc'){A.pNfc();return;}if(a==='impuls'){ui.modal={typ:'impuls'};renderOverlay();return;}if(a==='bimpuls'){ui.modal={typ:'bimpuls'};renderOverlay();return;}if(a&&a.indexOf('schwelle:')===0){if(!gateAktiv()){ui.modal={typ:'swHinweis',id:a.slice(9)};renderOverlay();}return;}if(a==='abend'){go('abend');return;}if(a==='stamm'){go('heute');return;}go('auto');},
   hinten:()=>{ENGINE.gate('sichtbar',false);plog('App im Hintergrund · '+ui.route);if(natTimer){clearTimeout(natTimer);natTimer=null;nat('zustandSichern',JSON.stringify(S));nativePlan();}try{if(ACTX&&ACTX.state==='running')ACTX.suspend();}catch(e){}try{speechSynthesis.cancel();}catch(e){}},
   musik:n=>{bwSet().musik=n||null;save();render();if(n)toast('Musik: '+n);},

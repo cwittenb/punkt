@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.os.Build
@@ -35,8 +34,12 @@ object Notif {
         "schwelle" to longArrayOf(0, 120, 120, 120, 120, 120)
     )
 
+    @Volatile private var kanaeleAngelegt = false
+
     fun kanaele(ctx: Context) {
+        if (kanaeleAngelegt) return
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        kanaeleAngelegt = true
         ALT.forEach { if (nm.getNotificationChannel(it) != null) nm.deleteNotificationChannel(it) }
         fun k(id: String, name: String, beschr: String) {
             val c = NotificationChannel(id + V, name, NotificationManager.IMPORTANCE_DEFAULT)
@@ -55,14 +58,12 @@ object Notif {
 
     fun zeigen(
         ctx: Context, kanal: String, id: Int, titel: String, text: String?,
-        aktion: String, ablaufMin: Long
+        aktion: String, ablaufMin: Long, mitSummen: Boolean = true
     ) {
-        summen(ctx, kanal)
+        if (mitSummen) summen(ctx, kanal)
         if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         kanaele(ctx)
-        val i = Intent(ctx, MainActivity::class.java)
-            .putExtra("aktion", aktion)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val i = MainActivity.aktionIntent(ctx, aktion)
         val pi = PendingIntent.getActivity(
             ctx, id, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

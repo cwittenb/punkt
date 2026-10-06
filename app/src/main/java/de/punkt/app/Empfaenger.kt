@@ -62,7 +62,8 @@ class AlarmReceiver : BroadcastReceiver() {
     ) {
         val a = Laufzeit.vorne()
         if (a != null) {
-            a.runOnUiThread { a.aktion(aktion) }
+            // Nimmt die Web-App den Impuls nicht an (Übung läuft), bleibt er als Mitteilung liegen
+            a.aktion(aktion) { Notif.zeigen(ctx, kanal, id, titel, text, aktion, ablaufMin, mitSummen = false) }
             Notif.summen(ctx, kanal)
         } else {
             Notif.zeigen(ctx, kanal, id, titel, text, aktion, ablaufMin)

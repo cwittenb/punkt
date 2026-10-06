@@ -12,13 +12,20 @@ object Protokoll {
 
     private fun datei(ctx: Context) = File(ctx.filesDir, "protokoll.txt")
 
+    // Grob geschätzte Zeilenzahl seit dem letzten Kürzen; genau zählen muss niemand
+    private var seitKuerzen = -1
+
     @Synchronized
     fun schreib(ctx: Context, text: String) {
         try {
             val f = datei(ctx)
-            val zeilen = if (f.exists()) f.readLines().takeLast(MAX - 1) else emptyList()
-            val neu = LocalDateTime.now().format(format) + "  " + text.replace('\n', ' ')
-            f.writeText((zeilen + neu).joinToString("\n") + "\n")
+            val neu = LocalDateTime.now().format(format) + "  " + text.replace('\n', ' ') + "\n"
+            f.appendText(neu)
+            if (seitKuerzen < 0) seitKuerzen = if (f.exists()) f.readLines().size else 0 else seitKuerzen++
+            if (seitKuerzen > MAX + 100) {
+                f.writeText(f.readLines().takeLast(MAX).joinToString("\n") + "\n")
+                seitKuerzen = MAX
+            }
         } catch (e: Exception) {
         }
     }

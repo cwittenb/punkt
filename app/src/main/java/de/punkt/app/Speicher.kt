@@ -17,17 +17,24 @@ object Speicher {
     /** Datum im Format der Web-App (JJJJ-MM-TT). */
     fun heute(): String = LocalDate.now().toString()
 
+    // Der Gate-Dienst fragt den Plan bei jedem Fensterwechsel ab: einmal parsen, nicht jedes Mal.
+    @Volatile private var planCache: Pair<String, JSONObject?>? = null
+
     fun plan(ctx: Context): JSONObject? {
         val t = prefs(ctx).getString("plan", null) ?: return null
-        return try {
+        planCache?.let { if (it.first == t) return it.second }
+        val o = try {
             JSONObject(t)
         } catch (e: Exception) {
             null
         }
+        planCache = t to o
+        return o
     }
 
     fun planSetzen(ctx: Context, json: String) {
         prefs(ctx).edit().putString("plan", json).apply()
+        planCache = null
     }
 
     fun zaehlen(ctx: Context, art: String) {

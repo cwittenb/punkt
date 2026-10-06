@@ -59,9 +59,9 @@ object Notif {
 
     fun zeigen(
         ctx: Context, kanal: String, id: Int, titel: String, text: String?,
-        aktion: String, ablaufMin: Long
+        aktion: String, ablaufMin: Long, mitSummen: Boolean = true
     ) {
-        summen(ctx, kanal)
+        if (mitSummen) summen(ctx, kanal)
         if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         kanaele(ctx)
         val i = Intent(ctx, MainActivity::class.java)

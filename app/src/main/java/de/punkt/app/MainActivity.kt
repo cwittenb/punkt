@@ -102,6 +102,7 @@ class MainActivity : Activity() {
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 Protokoll.schreib(this@MainActivity, "Web-Oberfläche beendet (" + (if (detail.didCrash()) "Absturz" else "vom System") + "), baue neu auf")
                 geladen = false
+                offeneAktion?.let { Speicher.prefs(this@MainActivity).edit().putString("offeneAktion", it).apply() }
                 recreate()
                 return true
             }
@@ -134,6 +135,10 @@ class MainActivity : Activity() {
         }
 
         if (savedInstanceState == null) verarbeite(intent)
+        else Speicher.prefs(this).getString("offeneAktion", null)?.let {
+            Speicher.prefs(this).edit().remove("offeneAktion").apply()
+            offeneAktion = it
+        }
         web.loadUrl("file:///android_asset/web/index.html")
         mitteilungenErlauben()
     }
@@ -158,8 +163,17 @@ class MainActivity : Activity() {
         if (geladen) aktion(a) else offeneAktion = a
     }
 
-    fun aktion(a: String) {
-        js("window.punktNativ&&window.punktNativ.aktion(" + JSONObject.quote(a) + ")")
+    /** Aktion an die Web-App geben. Nimmt sie sie nicht an (z. B. mitten in einer Übung), läuft `sonst`. */
+    fun aktion(a: String, sonst: (() -> Unit)? = null) {
+        runOnUiThread {
+            if (!geladen) {
+                sonst?.invoke()
+                return@runOnUiThread
+            }
+            web.evaluateJavascript("window.punktNativ&&window.punktNativ.aktion(" + JSONObject.quote(a) + ")===true?'1':'0'") { r ->
+                if (r != "\"1\"") sonst?.invoke()
+            }
+        }
     }
 
     fun js(code: String) {
@@ -173,13 +187,13 @@ class MainActivity : Activity() {
         Protokoll.schreib(this, "vorne")
         istVorne = true
         Laufzeit.aktivitaet = WeakReference(this)
-        if (geladen) web.evaluateJavascript("window.punktNativ&&window.punktNativ.resume()", null)
+        js("window.punktNativ&&window.punktNativ.resume()")
     }
 
     override fun onPause() {
         istVorne = false
         Protokoll.schreib(this, "im Hintergrund")
-        if (geladen) web.evaluateJavascript("window.punktNativ&&window.punktNativ.hinten&&window.punktNativ.hinten()", null)
+        js("window.punktNativ&&window.punktNativ.hinten&&window.punktNativ.hinten()")
         super.onPause()
     }
 

@@ -15,6 +15,7 @@ import android.view.accessibility.AccessibilityEvent
 class GateService : AccessibilityService() {
     private var zuletzt = 0L
     private val merk = HashMap<String, Boolean>()
+    private var merkZeit = 0L
     private var heim: String? = null
     private var heimZeit = 0L
 
@@ -46,6 +47,8 @@ class GateService : AccessibilityService() {
         if (pkg in FREI || pkg in Gate.erlaubt(this)) return false
         if (pkg == heimAktuell()) return false
         if (pkg == tastatur()) return false
+        val t = SystemClock.elapsedRealtime()
+        if (t - merkZeit > 10 * 60_000) { merk.clear(); merkZeit = t }
         return merk.getOrPut(pkg) { packageManager.getLaunchIntentForPackage(pkg) != null }
     }
 

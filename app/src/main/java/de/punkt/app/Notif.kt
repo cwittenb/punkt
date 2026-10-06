@@ -35,8 +35,12 @@ object Notif {
         "schwelle" to longArrayOf(0, 120, 120, 120, 120, 120)
     )
 
+    @Volatile private var kanaeleAngelegt = false
+
     fun kanaele(ctx: Context) {
+        if (kanaeleAngelegt) return
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        kanaeleAngelegt = true
         ALT.forEach { if (nm.getNotificationChannel(it) != null) nm.deleteNotificationChannel(it) }
         fun k(id: String, name: String, beschr: String) {
             val c = NotificationChannel(id + V, name, NotificationManager.IMPORTANCE_DEFAULT)

@@ -6,6 +6,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.OpenableColumns
 import java.io.File
 
@@ -73,11 +74,11 @@ class Musik(private val ctx: Context) {
 
     private fun blende(von: Float, bis: Float, dauer: Long, danach: (() -> Unit)?) {
         fade?.let { hand.removeCallbacks(it) }
-        val start = System.currentTimeMillis()
+        val start = SystemClock.elapsedRealtime()
         val r = object : Runnable {
             override fun run() {
                 val m = mp ?: return
-                val t = ((System.currentTimeMillis() - start).toFloat() / dauer).coerceIn(0f, 1f)
+                val t = ((SystemClock.elapsedRealtime() - start).toFloat() / dauer).coerceIn(0f, 1f)
                 lautAktuell = von + (bis - von) * t
                 try { m.setVolume(lautAktuell, lautAktuell) } catch (e: Exception) {}
                 if (t < 1f) hand.postDelayed(this, 100) else danach?.invoke()

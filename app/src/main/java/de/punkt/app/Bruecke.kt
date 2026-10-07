@@ -106,7 +106,11 @@ class Bruecke(private val a: MainActivity) {
 
     /** Diktat auf dem Gerät möglich? Sonst nimmt die Web-App eine Sprachnotiz auf. */
     @JavascriptInterface
-    fun diktatMoeglich(): Boolean = a.diktat.verfuegbar
+    fun diktatMoeglich(): Boolean = try {
+        a.diktat.verfuegbar
+    } catch (e: Throwable) {
+        false
+    }
 
     @JavascriptInterface
     fun diktatStart(key: String): Boolean {

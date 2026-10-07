@@ -73,6 +73,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Protokoll.absturzFangen(this)
         Protokoll.schreib(this, "App startet" + if (savedInstanceState != null) " (neu aufgebaut)" else "")
         konfig = Configuration(resources.configuration)
         Laufzeit.aktivitaet = WeakReference(this)
@@ -119,6 +120,14 @@ class MainActivity : Activity() {
             }
         }
         web.webChromeClient = object : WebChromeClient() {
+            // Fehler der Web-Oberfläche ins Protokoll, damit sie sich am Handy finden lassen
+            override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                    Protokoll.schreib(this@MainActivity, "JS-Fehler: " + m.message().take(200) + " (Zeile " + m.lineNumber() + ")")
+                }
+                return false
+            }
+
             override fun onShowFileChooser(
                 view: WebView, rueckruf: ValueCallback<Array<Uri>>, params: FileChooserParams
             ): Boolean {

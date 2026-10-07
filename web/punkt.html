@@ -559,6 +559,7 @@ let WAKE=null;function wach(){if(NATIVE)nat('wach',true);try{if(navigator.wakeLo
 const SES_KEY='punkt-ses';
 let SESCTX=null;   // Kontext der laufenden Übung: {typ, ctx, titel, schwelleId}. Zeit und Schritte liegen in ENGINE.
 function plog(t){if(NATIVE)nat('log',String(t));}
+if(NATIVE){window.addEventListener('error',e=>plog('JS-Fehler: '+(e.message||e)+' @'+(e.lineno||'?')));window.addEventListener('unhandledrejection',e=>plog('JS-Promise: '+((e.reason&&e.reason.message)||e.reason)));}
 function istBw(){return !!SESCTX&&SESCTX.typ==='breathwork';}
 function sesGates(){return{lage:!!S.sim.faceDown,sichtbar:!document.hidden};}
 function lageGates(x,typ){if(typ==='schwelle'||typ==='breathwork')return[];if(x.offen||x.gehen)return[];if(x.pacer)return S.settings.begleitung!=='stumm'?['lage']:[];return['lage'];}

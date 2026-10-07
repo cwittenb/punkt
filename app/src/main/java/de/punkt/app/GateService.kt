@@ -21,6 +21,7 @@ class GateService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        Protokoll.absturzFangen(this)
         Speicher.prefs(this).edit().putBoolean("gateWarAn", true).apply()
         Protokoll.schreib(this, "Gate-Dienst verbunden")
     }

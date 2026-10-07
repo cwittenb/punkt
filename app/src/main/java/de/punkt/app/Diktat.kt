@@ -1,13 +1,12 @@
 package de.punkt.app
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.RecognitionListener
-import android.speech.RecognitionSupport
-import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import org.json.JSONObject
@@ -19,6 +18,10 @@ import org.json.JSONObject
  *
  * An die Web-App gehen Ereignisse window.punktNativ.diktat({key, art, text?, grund?}):
  *   art = "bereit" | "teil" (vorläufig) | "satz" (fest) | "ende" | "fehler"
+ *
+ * Absturzsicher: Jeder Rückruf der Erkennung läuft in sicher{}, nichts verlässt diese Klasse als
+ * Ausnahme. Endet ein Diktat nicht sauber (Absturz der App), schaltet sich das Diktat bis zur
+ * nächsten App-Version ab; dann nimmt die App wieder Sprachnotizen auf.
  * Alles hier läuft auf dem Hauptthread.
  */
 class Diktat(private val a: MainActivity) {
@@ -28,56 +31,62 @@ class Diktat(private val a: MainActivity) {
     private var aktiv = false
     private var fehlerFolge = 0
     private var notAus: Runnable? = null
+    private var downloadAngestossen = false
 
-    /** Gibt es eine Erkennung auf dem Gerät? Einmal beim Start der Activity ermittelt. */
+    /** Gibt es eine Erkennung auf dem Gerät, und ist das Diktat nicht wegen eines Absturzes gesperrt? */
     val verfuegbar: Boolean by lazy {
+        val p = Speicher.prefs(a)
+        val version = versionCode(a)
+        // Lief beim letzten Mal ein Diktat, als die App starb: bis zur nächsten Version gesperrt
+        if (p.getBoolean("diktatLaeuft", false)) {
+            Protokoll.schreib(a, "Diktat endete beim letzten Mal nicht sauber, bis zum nächsten Update aus")
+            p.edit().putBoolean("diktatLaeuft", false).putLong("diktatAusBis", version).apply()
+        }
+        if (p.getLong("diktatAusBis", -1L) == version) return@lazy false
         try {
             SpeechRecognizer.isOnDeviceRecognitionAvailable(a)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            Protokoll.fehler(a, "Diktat verfügbar?", e)
             false
         }
     }
 
     fun laeuft() = key != null
 
-    fun start(feld: String) {
+    fun start(feld: String) = sicher("start") {
         if (key != null) stoppJetzt()
         key = feld
         aktiv = true
         fehlerFolge = 0
+        Speicher.prefs(a).edit().putBoolean("diktatLaeuft", true).commit()
         Protokoll.schreib(a, "Diktat startet")
-        val r = try {
-            SpeechRecognizer.createOnDeviceSpeechRecognizer(a)
-        } catch (e: Exception) {
-            null
-        }
-        if (r == null) return fehler("nicht")
+        val r = SpeechRecognizer.createOnDeviceSpeechRecognizer(a)
         r.setRecognitionListener(hoerer)
         sr = r
-        if (Build.VERSION.SDK_INT >= 33) sprachpaketPruefen(r) else hoeren()
+        hoeren()
     }
 
     /** Beendet das Diktat; das letzte Stück kommt noch als "satz", dann "ende". */
-    fun stopp() {
-        if (key == null) return
+    fun stopp() = sicher("stopp") {
+        if (key == null) return@sicher
         aktiv = false
         try {
             sr?.stopListening()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
         }
         // Liefert die Erkennung nichts mehr, trotzdem sauber beenden
-        val r = Runnable { ende() }
+        val r = Runnable { sicher("notAus") { ende() } }
         notAus = r
         hand.postDelayed(r, 2500)
     }
 
     /** Sofort beenden, ohne auf das letzte Stück zu warten (App geht in den Hintergrund). */
-    fun stoppJetzt() {
-        if (key == null) return
+    fun stoppJetzt() = sicher("stoppJetzt") {
+        if (key == null) return@sicher
         aktiv = false
         try {
             sr?.cancel()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
         }
         ende()
     }
@@ -88,10 +97,6 @@ class Diktat(private val a: MainActivity) {
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-        if (Build.VERSION.SDK_INT >= 33) {
-            // Satzzeichen und Großschreibung, soweit die Erkennung es kann
-            putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
-        }
     }
 
     private fun hoeren() {
@@ -99,71 +104,48 @@ class Diktat(private val a: MainActivity) {
         if (!aktiv) return
         try {
             r.startListening(absicht())
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            Protokoll.fehler(a, "Diktat startListening", e)
             fehler("nicht")
         }
     }
 
-    /** Android 13+: Ist Deutsch auf dem Gerät installiert? Sonst Download anstoßen und melden. */
-    private fun sprachpaketPruefen(r: SpeechRecognizer) {
-        try {
-            r.checkRecognitionSupport(absicht(), a.mainExecutor, object : RecognitionSupportCallback {
-                override fun onSupportResult(s: RecognitionSupport) {
-                    if (sr !== r) return
-                    val de = { l: List<String> -> l.any { it.startsWith("de") } }
-                    when {
-                        de(s.installedOnDeviceLanguages) -> hoeren()
-                        de(s.pendingOnDeviceLanguages) -> fehler("sprachpaket")
-                        de(s.supportedOnDeviceLanguages) -> {
-                            try {
-                                r.triggerModelDownload(absicht())
-                            } catch (e: Exception) {
-                            }
-                            fehler("sprachpaket")
-                        }
-                        // Keine Angaben (manche Dienste füllen die Listen nicht): einfach versuchen
-                        else -> hoeren()
-                    }
-                }
-
-                override fun onError(code: Int) {
-                    if (sr === r) hoeren()
-                }
-            })
-        } catch (e: Exception) {
-            hoeren()
-        }
+    /** Neustart nach einer Pause oder einem Fehler, mit Abstand, damit die Erkennung frei ist. */
+    private fun spaeterHoeren(ms: Long) {
+        hand.postDelayed({ sicher("hoeren") { hoeren() } }, ms)
     }
 
     private val hoerer = object : RecognitionListener {
-        override fun onReadyForSpeech(p: Bundle?) {
+        override fun onReadyForSpeech(p: Bundle?) = sicher("bereit") {
             fehlerFolge = 0
             melde("bereit")
         }
 
-        override fun onPartialResults(b: Bundle?) {
-            val t = text(b) ?: return
-            melde("teil", t)
+        override fun onPartialResults(b: Bundle?) = sicher("teil") {
+            text(b)?.let { melde("teil", it) }
         }
 
-        override fun onResults(b: Bundle?) {
+        override fun onResults(b: Bundle?) = sicher("satz") {
             text(b)?.let { melde("satz", it) }
-            if (aktiv) hand.post { hoeren() } else ende()
+            if (aktiv) spaeterHoeren(100) else hand.post { sicher("ende") { ende() } }
         }
 
-        override fun onError(code: Int) {
+        override fun onError(code: Int) = sicher("fehler") {
+            Protokoll.schreib(a, "Diktat: Erkennung meldet $code")
             when (code) {
                 // Sprechpause oder nichts verstanden: weiterhören, solange nicht gestoppt
                 SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
-                    if (aktiv) hand.postDelayed({ hoeren() }, 150) else ende()
-                SpeechRecognizer.ERROR_CLIENT -> if (!aktiv) ende()
+                    if (aktiv) spaeterHoeren(200) else hand.post { sicher("ende") { ende() } }
+                SpeechRecognizer.ERROR_CLIENT -> if (!aktiv) hand.post { sicher("ende") { ende() } }
                 SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> fehler("mikrofon")
                 SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
-                SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> fehler("sprachpaket")
+                SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> {
+                    sprachpaketLaden()
+                    fehler("sprachpaket")
+                }
                 else -> {
                     fehlerFolge++
-                    if (aktiv && fehlerFolge <= 3) hand.postDelayed({ hoeren() }, 400)
-                    else fehler("code$code")
+                    if (aktiv && fehlerFolge <= 3) spaeterHoeren(500) else fehler("code$code")
                 }
             }
         }
@@ -175,6 +157,18 @@ class Diktat(private val a: MainActivity) {
         override fun onEvent(typ: Int, p: Bundle?) {}
     }
 
+    /** Android 13+: Download des Sprachpakets beim Sprachdienst anstoßen, einmal je App-Lauf. */
+    private fun sprachpaketLaden() {
+        if (downloadAngestossen || Build.VERSION.SDK_INT < 33) return
+        downloadAngestossen = true
+        try {
+            sr?.triggerModelDownload(absicht())
+            Protokoll.schreib(a, "Diktat: Sprachpaket angefordert")
+        } catch (e: Throwable) {
+            Protokoll.fehler(a, "Diktat Sprachpaket", e)
+        }
+    }
+
     private fun text(b: Bundle?): String? =
         b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.trim()?.ifEmpty { null }
 
@@ -182,20 +176,25 @@ class Diktat(private val a: MainActivity) {
         Protokoll.schreib(a, "Diktat: Fehler $grund")
         melde("fehler", grund = grund)
         aktiv = false
-        ende(still = true)
+        // Nicht innerhalb des Rückrufs der Erkennung zerstören
+        hand.post { sicher("ende") { ende(still = true) } }
     }
 
     private fun ende(still: Boolean = false) {
         notAus?.let { hand.removeCallbacks(it) }
         notAus = null
         val k = key ?: return
-        try {
-            sr?.destroy()
-        } catch (e: Exception) {
-        }
-        sr = null
-        if (!still) melde("ende", feld = k)
         key = null
+        aktiv = false
+        val r = sr
+        sr = null
+        try {
+            r?.destroy()
+        } catch (e: Throwable) {
+            Protokoll.fehler(a, "Diktat destroy", e)
+        }
+        Speicher.prefs(a).edit().putBoolean("diktatLaeuft", false).apply()
+        if (!still) melde("ende", feld = k)
         Protokoll.schreib(a, "Diktat beendet")
     }
 
@@ -204,5 +203,32 @@ class Diktat(private val a: MainActivity) {
         if (text != null) o.put("text", text)
         if (grund != null) o.put("grund", grund)
         a.js("window.punktNativ&&window.punktNativ.diktat&&window.punktNativ.diktat($o)")
+    }
+
+    /** Fängt alles ab: ein Fehler im Diktat darf die App nicht beenden. */
+    private inline fun sicher(wo: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Throwable) {
+            Protokoll.fehler(a, "Diktat $wo", e)
+            val k = key
+            key = null
+            aktiv = false
+            try {
+                sr?.destroy()
+            } catch (x: Throwable) {
+            }
+            sr = null
+            Speicher.prefs(a).edit().putBoolean("diktatLaeuft", false).apply()
+            if (k != null) melde("fehler", grund = "nicht", feld = k)
+        }
+    }
+
+    companion object {
+        fun versionCode(ctx: Context): Long = try {
+            ctx.packageManager.getPackageInfo(ctx.packageName, 0).longVersionCode
+        } catch (e: Throwable) {
+            0L
+        }
     }
 }

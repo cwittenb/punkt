@@ -30,6 +30,37 @@ object Protokoll {
         }
     }
 
+    /** Ausnahme mit den obersten Zeilen des Stacktraces, inklusive Ursache. */
+    fun fehler(ctx: Context, wo: String, e: Throwable) {
+        val sb = StringBuilder("FEHLER $wo: ").append(e.javaClass.name).append(": ").append(e.message ?: "")
+        var t: Throwable? = e
+        var tiefe = 0
+        while (t != null && tiefe < 3) {
+            if (tiefe > 0) sb.append(" | Ursache: ").append(t.javaClass.name).append(": ").append(t.message ?: "")
+            t.stackTrace.take(8).forEach { sb.append(" | at ").append(it.className.substringAfterLast('.')).append('.').append(it.methodName).append(':').append(it.lineNumber) }
+            t = t.cause
+            tiefe++
+        }
+        schreib(ctx, sb.toString())
+    }
+
+    @Volatile private var eingerichtet = false
+
+    /** Schreibt jeden Absturz der App ins Protokoll, bevor Android sie beendet. Einmal je Prozess. */
+    fun absturzFangen(ctx: Context) {
+        if (eingerichtet) return
+        eingerichtet = true
+        val app = ctx.applicationContext
+        val vorher = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { th, e ->
+            try {
+                fehler(app, "ABSTURZ im Thread ${th.name}", e)
+            } catch (x: Throwable) {
+            }
+            vorher?.uncaughtException(th, e)
+        }
+    }
+
     /** Neueste Zeilen zuerst. */
     fun lesen(ctx: Context, n: Int = 80): String = try {
         val f = datei(ctx)

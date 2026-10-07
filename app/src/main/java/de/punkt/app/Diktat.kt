@@ -6,6 +6,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.speech.ModelDownloadListener
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -17,7 +19,12 @@ import org.json.JSONObject
  * nicht stoppt, wird sie neu gestartet, damit auch längere Antworten durchgehen.
  *
  * An die Web-App gehen Ereignisse window.punktNativ.diktat({key, art, text?, grund?}):
- *   art = "bereit" | "teil" (vorläufig) | "satz" (fest) | "ende" | "fehler"
+ *   art = "laden" (Sprachpaket wird installiert, prozent?) | "bereit" | "teil" (vorläufig)
+ *         | "satz" (fest) | "ende" | "fehler"
+ *
+ * Fehlt das deutsche Sprachpaket, wird der Download angestoßen und gewartet, bis es da ist:
+ * Android 14+ meldet den Fortschritt; davor wird alle paar Sekunden neu versucht. Das Diktat
+ * startet dann von selbst. Nach WARTEN_MAX gibt es auf.
  *
  * Absturzsicher: Jeder Rückruf der Erkennung läuft in sicher{}, nichts verlässt diese Klasse als
  * Ausnahme. Endet ein Diktat nicht sauber (Absturz der App), schaltet sich das Diktat bis zur
@@ -32,6 +39,9 @@ class Diktat(private val a: MainActivity) {
     private var fehlerFolge = 0
     private var notAus: Runnable? = null
     private var downloadAngestossen = false
+    private var wartet = false
+    private var wartenSeit = 0L
+    private var hintergrund = false
 
     /** Gibt es eine Erkennung auf dem Gerät, und ist das Diktat nicht wegen eines Absturzes gesperrt? */
     val verfuegbar: Boolean by lazy {
@@ -70,6 +80,13 @@ class Diktat(private val a: MainActivity) {
     fun stopp() = sicher("stopp") {
         if (key == null) return@sicher
         aktiv = false
+        if (wartet) {
+            try {
+                sr?.cancel()
+            } catch (e: Throwable) {
+            }
+            return@sicher ende()
+        }
         try {
             sr?.stopListening()
         } catch (e: Throwable) {
@@ -91,6 +108,16 @@ class Diktat(private val a: MainActivity) {
         ende()
     }
 
+    /** App geht in den Hintergrund: Zuhören beenden; Warten aufs Sprachpaket läuft weiter. */
+    fun hintergrund() = sicher("hintergrund") {
+        hintergrund = true
+        if (key != null && !wartet) stoppJetzt()
+    }
+
+    fun vordergrund() {
+        hintergrund = false
+    }
+
     private fun absicht(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, "de-DE")
@@ -102,6 +129,8 @@ class Diktat(private val a: MainActivity) {
     private fun hoeren() {
         val r = sr ?: return
         if (!aktiv) return
+        // Während des Wartens im Hintergrund (Installationsdialog) nur später wieder nachsehen
+        if (hintergrund) return spaeterHoeren(PROBE_MS)
         try {
             r.startListening(absicht())
         } catch (e: Throwable) {
@@ -118,6 +147,10 @@ class Diktat(private val a: MainActivity) {
     private val hoerer = object : RecognitionListener {
         override fun onReadyForSpeech(p: Bundle?) = sicher("bereit") {
             fehlerFolge = 0
+            if (wartet) {
+                wartet = false
+                Protokoll.schreib(a, "Diktat: Sprachpaket bereit nach " + (SystemClock.elapsedRealtime() - wartenSeit) / 1000 + " s")
+            }
             melde("bereit")
         }
 
@@ -136,14 +169,12 @@ class Diktat(private val a: MainActivity) {
                 // Sprechpause oder nichts verstanden: weiterhören, solange nicht gestoppt
                 SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
                     if (aktiv) spaeterHoeren(200) else hand.post { sicher("ende") { ende() } }
-                SpeechRecognizer.ERROR_CLIENT -> if (!aktiv) hand.post { sicher("ende") { ende() } }
+                SpeechRecognizer.ERROR_CLIENT ->
+                    if (wartet) warten() else if (!aktiv) hand.post { sicher("ende") { ende() } }
                 SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> fehler("mikrofon")
                 SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
-                SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> {
-                    sprachpaketLaden()
-                    fehler("sprachpaket")
-                }
-                else -> {
+                SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> warten()
+                else -> if (wartet) warten() else {
                     fehlerFolge++
                     if (aktiv && fehlerFolge <= 3) spaeterHoeren(500) else fehler("code$code")
                 }
@@ -157,12 +188,52 @@ class Diktat(private val a: MainActivity) {
         override fun onEvent(typ: Int, p: Bundle?) {}
     }
 
-    /** Android 13+: Download des Sprachpakets beim Sprachdienst anstoßen, einmal je App-Lauf. */
+    /** Sprachpaket fehlt: Download anstoßen (einmal je App-Lauf) und in Abständen nachsehen. */
+    private fun warten() {
+        if (!aktiv) return
+        val jetzt = SystemClock.elapsedRealtime()
+        if (!wartet) {
+            wartet = true
+            wartenSeit = jetzt
+            Protokoll.schreib(a, "Diktat: Sprachpaket fehlt, warte")
+            melde("laden")
+            sprachpaketLaden()
+        } else if (jetzt - wartenSeit > WARTEN_MAX) {
+            wartet = false
+            return fehler("sprachpaket")
+        }
+        spaeterHoeren(PROBE_MS)
+    }
+
     private fun sprachpaketLaden() {
         if (downloadAngestossen || Build.VERSION.SDK_INT < 33) return
         downloadAngestossen = true
+        val r = sr ?: return
         try {
-            sr?.triggerModelDownload(absicht())
+            if (Build.VERSION.SDK_INT >= 34) {
+                // Android 14+: Fortschritt anzeigen und sofort starten, wenn fertig
+                r.triggerModelDownload(absicht(), a.mainExecutor, object : ModelDownloadListener {
+                    override fun onProgress(prozent: Int) = sicher("laden") {
+                        if (wartet) melde("laden", prozent = prozent)
+                    }
+
+                    override fun onSuccess() = sicher("geladen") {
+                        Protokoll.schreib(a, "Diktat: Sprachpaket installiert")
+                        if (wartet && !hintergrund) hoeren()
+                    }
+
+                    override fun onScheduled() = sicher("geplant") {
+                        Protokoll.schreib(a, "Diktat: Download geplant (WLAN?)")
+                        if (wartet) melde("laden", grund = "geplant")
+                    }
+
+                    override fun onError(code: Int) = sicher("ladefehler") {
+                        Protokoll.schreib(a, "Diktat: Download meldet Fehler $code, versuche weiter")
+                    }
+                })
+            } else {
+                r.triggerModelDownload(absicht())
+            }
             Protokoll.schreib(a, "Diktat: Sprachpaket angefordert")
         } catch (e: Throwable) {
             Protokoll.fehler(a, "Diktat Sprachpaket", e)
@@ -186,6 +257,7 @@ class Diktat(private val a: MainActivity) {
         val k = key ?: return
         key = null
         aktiv = false
+        wartet = false
         val r = sr
         sr = null
         try {
@@ -198,8 +270,9 @@ class Diktat(private val a: MainActivity) {
         Protokoll.schreib(a, "Diktat beendet")
     }
 
-    private fun melde(art: String, text: String? = null, grund: String? = null, feld: String? = key) {
+    private fun melde(art: String, text: String? = null, grund: String? = null, feld: String? = key, prozent: Int? = null) {
         val o = JSONObject().put("key", feld ?: "").put("art", art)
+        if (prozent != null) o.put("prozent", prozent)
         if (text != null) o.put("text", text)
         if (grund != null) o.put("grund", grund)
         a.js("window.punktNativ&&window.punktNativ.diktat&&window.punktNativ.diktat($o)")
@@ -225,6 +298,9 @@ class Diktat(private val a: MainActivity) {
     }
 
     companion object {
+        private const val PROBE_MS = 3000L
+        private const val WARTEN_MAX = 10 * 60_000L
+
         fun versionCode(ctx: Context): Long = try {
             ctx.packageManager.getPackageInfo(ctx.packageName, 0).longVersionCode
         } catch (e: Throwable) {

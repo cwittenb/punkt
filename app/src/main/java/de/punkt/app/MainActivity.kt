@@ -210,6 +210,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        diktat.vordergrund()
         web.onResume()
     }
 
@@ -217,7 +218,7 @@ class MainActivity : Activity() {
     override fun onStop() {
         sprichStopp()
         // Im Hintergrund darf und soll nicht mitgehört werden
-        if (diktat.laeuft()) diktat.stoppJetzt()
+        if (diktat.laeuft()) diktat.hintergrund()
         web.onPause()
         super.onStop()
     }

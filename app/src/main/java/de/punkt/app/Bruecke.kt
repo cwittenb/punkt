@@ -226,6 +226,57 @@ class Bruecke(private val a: MainActivity) {
         return true
     }
 
+    /**
+     * Fremde App über eine Adresse öffnen (Spotify-Playlist fürs Tandava). Braucht keine
+     * Internet-Berechtigung: Android reicht die Adresse an die Spotify-App weiter.
+     * Ist Spotify nicht installiert, geht die Web-Adresse an den Browser.
+     */
+    @JavascriptInterface
+    fun oeffne(uri: String, ersatz: String): Boolean {
+        a.runOnUiThread {
+            val ziel = listOf(uri, ersatz).filter { it.isNotBlank() }
+            for (u in ziel) {
+                try {
+                    a.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(u)))
+                    Protokoll.schreib(a, "Geöffnet: " + u.take(80))
+                    break
+                } catch (e: Exception) {
+                    Protokoll.schreib(a, "Öffnen fehlgeschlagen: " + u.take(80))
+                }
+            }
+        }
+        return true
+    }
+
+    /**
+     * Andere Musik (Spotify) anhalten: Die App holt sich kurz den Audiofokus, die laufende
+     * Wiedergabe pausiert daraufhin. Danach gibt die App den Fokus wieder frei.
+     */
+    @JavascriptInterface
+    fun fremdeMusikAnhalten(): Boolean {
+        a.runOnUiThread {
+            try {
+                val am = a.getSystemService(android.media.AudioManager::class.java) ?: return@runOnUiThread
+                val req = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(
+                        android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build()
+                    )
+                    .setOnAudioFocusChangeListener { }
+                    .build()
+                val ok = am.requestAudioFocus(req) == android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+                Protokoll.schreib(a, "Fremde Musik anhalten: " + if (ok) "Fokus erhalten" else "abgelehnt")
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    try { am.abandonAudioFocusRequest(req) } catch (e: Exception) {}
+                }, 3000)
+            } catch (e: Exception) {
+                Protokoll.schreib(a, "Fremde Musik anhalten fehlgeschlagen: ${e.javaClass.simpleName}")
+            }
+        }
+        return true
+    }
+
     @JavascriptInterface
     fun log(text: String): Boolean {
         Protokoll.schreib(a, "Web: " + text.take(300))

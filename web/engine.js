@@ -28,12 +28,17 @@ const TREIBER = {
     fertig: (s, t) => t >= s.sek,
     signale: () => [],
   },
-  // Endet nur am Beginn eines Einatmens, frühestens bei sek - 0.3*takt.
+  // Endet nur nach einem vollständigen Ausatmen, also an der Grenze zum
+  // nächsten Einatmen, frühestens bei sek - 0.3*takt. Der Atemzug läuft zu
+  // Ende, erst dann kommt der Schlusston; das neue Einatmen wird nicht mehr
+  // angestoßen. „Neuer Zyklus noch nicht signalisiert“ (idx ≠ letzt.idx) macht
+  // das robust gegen verspätete Ticks.
   atem: {
     dauer: s => s.sek,
-    fertig(s, t) {
+    fertig(s, t, letzt) {
       const takt = s.takt / 1000, idx = Math.floor(t / takt);
-      const amEin = idx % 2 === 0 && t - idx * takt < 0.25;
+      const neu = letzt ? idx !== letzt.idx : false;
+      const amEin = idx % 2 === 0 && (neu || t - idx * takt < 0.25);
       return idx > 0 && amEin && t >= s.sek - takt * 0.3;
     },
     signale(s, t, letzt) {
@@ -204,7 +209,7 @@ function createEngine(deps) {
     if (st.phase !== 'running' && st.phase !== 'paused') return;
     if (s.treiber === 'halten') { st.halten[(s.runde || 1) - 1] = Math.round(zeit()); return schrittEnde(); }
     if (s.treiber === 'frei') return schrittEnde();
-    if (treiber(s).fertig(s, zeit())) return schrittEnde();
+    if (treiber(s).fertig(s, zeit(), st.letztSignal)) return schrittEnde();
   }
   /** Schritt vorzeitig beenden (Breathwork „Weiter“, „Genug für heute“). */
   function skip() {
@@ -263,6 +268,9 @@ function createEngine(deps) {
     }
     if (st.phase !== 'running') return;
     const s = schrittAkt(), t = zeit(), tok = st.token;
+    // Erst prüfen, ob der Schritt endet: sonst stieße der Ton fürs nächste
+    // Einatmen an, und der Schlusston fiele mitten in den Atemzug.
+    if (treiber(s).fertig(s, t, st.letztSignal)) return schrittEnde();
     for (const sig of treiber(s).signale(s, t, st.letztSignal)) {
       if (sig.art === 'atem') { deps.ton.atem(sig.wort, sig.takt); if (deps.atemWort && deps.atemWort(sig)) Q.sag(sig.wort, 'atem'); }
     }
@@ -279,7 +287,6 @@ function createEngine(deps) {
       if (t >= at && !st.cuesFertig[key]) { st.cuesFertig[key] = true; Q.sag(c.text, 'cue'); }
     });
     if (st.token !== tok) return;
-    if (treiber(s).fertig(s, t)) return schrittEnde();
     deps.patch(state());
     if (Date.now() - st.gespeichert > 3000) speichern();
   }

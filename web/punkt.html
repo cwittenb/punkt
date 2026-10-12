@@ -396,6 +396,10 @@ const TX={
   bwErholung:{titel:'Erholung',text:'Tief einatmen und 15 Sekunden halten. Dann loslassen.',offen:true,ansage:'Tief einatmen. Und halten.'},
   bwRuhe:{titel:'Ruhe',text:'Normal atmen, liegen bleiben. Nichts festhalten, was auftaucht.',offen:true,ansage:'Ruhe. Atme jetzt ganz normal. Liegen bleiben, nichts tun.'},
   bwNach:{titel:'Nachspüren',text:'Was ist jetzt da? Und was davon war schon vorher da?',offen:true,ansage:'Nachspüren. Was ist jetzt da? Und was davon war schon vorher da?'},
+  tdErzittern:{titel:'Erzittern',text:'Sitzend, die Wirbelsäule aufrecht und weich. Lass den Körper in den Raum los und den Atem kommen. Das feine Pulsieren innen begrüßen, nicht erzeugen. Entsteht Bewegung, dann sehr langsam und kreisend, vom Atem getragen. Bemerkst du „ich mache das“: anhalten und warten, bis es sich von selbst bewegt.',offen:true},
+  tdOeffnen:{titel:'Öffnen',text:'Weiter sitzend. Die Arme öffnen sich in den Raum, die Schulterblätter wie Flügel. Lider halb offen, Zunge und Becken weich, der Atem frei. Du schwebst in mitternachtsblauem Raum.',offen:true},
+  tdTanz:{titel:'Tanz',text:'Steh auf und lass den Körper sich bewegen. Langsam und fließend, ohne Form, wie ein freies Tai Chi. Nichts vorführen, nichts wiederholen.',offen:true},
+  tdStille:{titel:'Stille',text:'Die Bewegung klingt nach, bis sie still wird. Bleib, wie du gerade bist. Wer hat sich bewegt?',offen:true},
   klang:{titel:'Klangspiel',text:'Alle schließen die Augen. Wer hört den leisesten Ton? Nach einer Minute erzählt jeder, was er gehört hat.',blick:true},
   ankerGehen:{titel:'Anker-Frage im Gehen',text:'Bei jedem zehnten Schritt: Bin ich gewahr? Nicht antworten, nur bemerken.',blick:true,gehen:true}
 };
@@ -410,13 +414,14 @@ const KATALOG=[
   {id:'harding',titel:'Harding-Experiment',min:10,phasen:['1'],orte:ORTE,prio:3,rhythmus:'woche'},
   {id:'metta',titel:'Metta mit Wendung',min:10,phasen:['2'],orte:['allein','arbeit'],prio:3,rhythmus:'woche2'},
   {id:'wuenschen',titel:'Wünschen ohne zu brauchen',min:15,phasen:['3'],orte:['allein'],prio:3,rhythmus:'monat'},
+  {id:'tandava',titel:'Tandava',min:9,phasen:ALLE,orte:['allein'],prio:3},
   {id:'leere',titel:'Leere-Übung',min:5,phasen:ALLE,orte:['allein','arbeit'],prio:4},
   {id:'klang',titel:'Klangspiel mit den Kindern',min:5,phasen:ALLE,orte:['kinder'],prio:4},
   {id:'ankergehen',titel:'Anker-Frage im Gehen',min:5,phasen:ALLE,orte:['unterwegs'],prio:4},
   {id:'erdung',titel:'Erdungsübung',min:10,phasen:ALLE,orte:ORTE,prio:5,nurWarn:true},
   {id:'kohaerenz',titel:'Kohärenzatmung',min:5,phasen:ALLE,orte:ORTE,prio:6}
 ];
-const GRUND={gehen:'Unterwegs sind die Sinne das Übungsfeld.',leere:'Fünf Minuten reichen. Die Leere ist der Teil, der schwer bleibt.',klang:'Wer hört den leisesten Ton? Eine Übung für alle im Raum.',ankergehen:'Bei jedem zehnten Schritt: Bin ich gewahr?',kohaerenz:'Geht überall, auch mitten im Trubel.',erdung:'Die Ampel steht nicht auf Grün. Erdung geht vor.'};
+const GRUND={tandava:'Langsame, vom Atem getragene Bewegung nach Daniel Odier. Kurz im Sitzen oder ganz mit Tanz.',gehen:'Unterwegs sind die Sinne das Übungsfeld.',leere:'Fünf Minuten reichen. Die Leere ist der Teil, der schwer bleibt.',klang:'Wer hört den leisesten Ton? Eine Übung für alle im Raum.',ankergehen:'Bei jedem zehnten Schritt: Bin ich gewahr?',kohaerenz:'Geht überall, auch mitten im Trubel.',erdung:'Die Ampel steht nicht auf Grün. Erdung geht vor.'};
 const UEB_NAME={anker:'Morgenanker',schwelle:'Schwellen-Anker',begegnung:'Begegnungen',haupt:'Hauptpraxis',schatten:'Schattenarbeit',angst:'Angst-Protokoll',scheitern:'Scheitern riskieren'};
 function uebName(id){if(UEB_NAME[id])return UEB_NAME[id];const k=KATALOG.find(x=>x.id===id);return k?k.titel:id;}
 function anlassText(b){return ANLASS[b.anlass]+(b.uebung&&b.anlass!=='haupt_ausgelassen'?' ('+uebName(b.uebung)+')':'');}
@@ -513,6 +518,7 @@ function uebungPlan(id){switch(id){
   case 'erdung':return[st('kohaerenz',2),st('erdung',8)];
   case 'gehen':return[st('sinne',15)];
   case 'klang':return[st('klang',5)];
+  case 'tandava':return tdPlan();
   case 'ankergehen':return[st('ankerGehen',5)];
   case 'breathwork':{const b=bwSet();if(b.variante==='runden')return bwRundenPlan(b);return[st('bwVor',1),st('bwAtmen',b.atmen),st('bwRuhe',Math.max(5,Math.round(b.atmen/3))),st('bwNach',3)];}
   default:return[st('kohaerenz',5)];}}
@@ -532,7 +538,7 @@ function empfehlungen(t,ort){
     if(k.id==='schatten')grund='Diese Woche noch offen. Sie braucht 25 Minuten allein, und die hast du gerade.';
     if(k.id==='breathwork')grund='Einmal im Monat möglich: Ampel grün, vor 18 Uhr, diesen Monat noch offen.';
     if(!grund)grund=GRUND[k.id]||'';
-    out.push(Object.assign({},k,{grund:grund,titel:k.id==='haupt'?hauptTitel():k.titel,dauer:k.id==='haupt'?'15–25 Min.':k.id==='klang'?'5–10 Min.':k.min+' Min.'}));
+    out.push(Object.assign({},k,{grund:grund,titel:k.id==='haupt'?hauptTitel():k.titel,dauer:k.id==='haupt'?'15–25 Min.':k.id==='klang'?'5–10 Min.':k.id==='tandava'?'9 oder 26 Min.':k.min+' Min.'}));
   }
   out.sort((x,y)=>x.prio-y.prio);
   if(!out.length)out.push(Object.assign({},KATALOG[KATALOG.length-1],{grund:GRUND.kohaerenz,dauer:'5 Min.'}));
@@ -568,17 +574,18 @@ let SESCTX=null;   // Kontext der laufenden Übung: {typ, ctx, titel, schwelleId
 function plog(t){if(NATIVE)nat('log',String(t));}
 if(NATIVE){window.addEventListener('error',e=>plog('JS-Fehler: '+(e.message||e)+' @'+(e.lineno||'?')));window.addEventListener('unhandledrejection',e=>plog('JS-Promise: '+((e.reason&&e.reason.message)||e.reason)));}
 function istBw(){return !!SESCTX&&SESCTX.typ==='breathwork';}
+function istTd(){return !!SESCTX&&SESCTX.typ==='tandava';}
 function sesGates(){return{lage:!!S.sim.faceDown,sichtbar:!document.hidden};}
 function lageGates(x,typ){if(typ==='schwelle'||typ==='breathwork')return[];if(x.offen||x.gehen)return[];if(x.pacer)return S.settings.begleitung!=='stumm'?['lage']:[];return['lage'];}
 function bwCues(x,sek){if(x.cues)return[{at:'alle-180',text:x.cues}];if(x.key==='bwSchnell'&&sek>20)return[{at:'ende-10',text:'Noch fünf.'}];if(x.halten&&x.cue)return[{at:20,text:x.cue}];return[];}
 /** Übersetzt einen Plan (st(key,min)-Objekte) in Engine-Schritte. Hier steckt das ganze Wissen über Formate. */
-function planZuFormat(typ,plan){const n=plan.length,bw=typ==='breathwork',sw=typ==='schwelle',anl=bw&&bwAnleitung(),mus=bw&&bwMusik();
+function planZuFormat(typ,plan){const n=plan.length,bw=typ==='breathwork',sw=typ==='schwelle',td=typ==='tandava',anl=bw&&bwAnleitung(),mus=bw&&bwMusik(),tdStopp=td&&tdAnhalten();
   return{id:typ,schritte:plan.map((x,i)=>{const sekFix=x.sek!=null;const sek=sekFix?x.sek:x.min*secPerMin();
     return schritt(Object.assign({},x,{sek:sek,sekFix:sekFix,min:x.halten?null:x.min,
       treiber:x.halten?'halten':x.pacer?'atem':x.key==='bwVor'?'frei':'zeit',takt:x.takt||5000,max:x.halten?sek:undefined,
-      ende:(sw||(bw&&i<n-1))?'auto':'tap',warm:!sw&&!(bw&&i>0),gates:lageGates(x,typ),
+      ende:(sw||((bw||td)&&i<n-1))?'auto':'tap',warm:!sw&&!((bw||td)&&i>0),gates:lageGates(x,typ),
       ansage:anl?x.ansage||null:null,cues:anl?bwCues(x,sek):[],
-      musik:mus?((x.key==='bwAtmen'||(x.key==='bwSchnell'&&x.runde===1))?'start':x.key==='bwNach'?'stop':null):null}));})};}
+      musik:mus?((x.key==='bwAtmen'||(x.key==='bwSchnell'&&x.runde===1))?'start':x.key==='bwNach'?'stop':null):tdStopp&&x.key==='tdStille'?'stop':null}));})};}
 function pacerZeig(w){const el=document.getElementById('pacer');if(!el)return;el.style.transform=w==='ein'?'scale(1)':'scale(.55)';const wd=document.getElementById('pacer-word');if(wd)wd.textContent=w;}
 function sesPatch(z,status){const x=z.schritt;if(!x||ui.route!=='session')return;
   if(z.phase==='warm'){const t=document.getElementById('s-zeit');if(t)t.textContent=String(Math.ceil(z.warmRest));const r=document.getElementById('s-ring');if(r)r.setAttribute('stroke-dashoffset',(100-100*z.warmAnteil).toFixed(2));return;}
@@ -589,8 +596,8 @@ const ENGINE=createEngine({
   sprecher:{say:w=>{const ok=sprich(w);const ms=Math.max(1200,String(w).split(/\s+/).length*420);return new Promise(r=>setTimeout(r,ok?ms:0));},stop:()=>{if(NATIVE)nat('sprichStopp');try{speechSynthesis.cancel();}catch(e){}}},
   atemWort:sig=>S.settings.begleitung==='stimme'&&sig.takt>=2000&&!(istBw()&&bwAnleitung()),
   ton:{atem:(w,takt)=>{pacerZeig(w);if(istBw()&&bwAnleitung())return;const m=S.settings.begleitung;if(m==='ton'||(m==='stimme'&&takt<2000))ton(w==='ein'?396:528,w==='ein'?528:396,takt*0.92/1000,.11);},
-    gong:gong,klick:()=>ton(528,528,.9,.08),warmEnde:()=>ton(330,330,1.0,.12)},
-  musik:{start:()=>nat('musikStart',0.5),stop:ms=>nat('musikStopp',ms)},
+    gong:()=>{if(istTd()&&!document.hidden)nat('summen');gong();},klick:()=>{if(istTd())nat('summen');ton(528,528,.9,.08);},warmEnde:()=>ton(330,330,1.0,.12)},
+  musik:{start:()=>nat('musikStart',0.5),stop:ms=>{if(istTd()){if(tdAnhalten())nat('fremdeMusikAnhalten');return;}nat('musikStopp',ms);}},
   wach:an=>an?wach():schlaf(),
   speicher:{schreiben:snap=>{try{if(!snap||!SESCTX||SESCTX.typ==='schwelle')localStorage.removeItem(SES_KEY);else localStorage.setItem(SES_KEY,JSON.stringify({s:SESCTX,eng:snap,at:Date.now()}));}catch(e){}}},
   render:(z,grund)=>{if(grund==='ende'){if(z.ergebnis&&z.ergebnis.regulaer)sesFertig(z.ergebnis);return;}if(ui.route!=='session')return;if(grund==='phase'&&!z.fertig&&z.phase!=='warm'){sesPatch(z,true);return;}render();},
@@ -715,6 +722,24 @@ function pacerHtml(anteil){const kreis='<div class="pacer" id="pacer" aria-hidde
 
 /* ---------- Ansichten ---------- */
 const V={};
+/* ---------- Tandava (Spanda nach Daniel Odier) ---------- */
+function tdSet(){const t=S.settings.td||(S.settings.td={});if(!t.form)t.form='ganz';if(t.link==null)t.link='';if(t.anhalten==null)t.anhalten=true;return t;}
+function tdPlan(){return tdSet().form==='kurz'?[st('tdErzittern',7),st('tdStille',2)]:[st('tdErzittern',8),st('tdOeffnen',7),st('tdTanz',8),st('tdStille',3)];}
+/** Spotify-Link oder -URI → {uri, web}. Nimmt open.spotify.com-Links (auch mit ?si=…) und spotify:typ:id. */
+function spotify(l){l=String(l||'').trim();const m=l.match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(playlist|album|track|artist|show|episode)\/([A-Za-z0-9]+)/)||l.match(/^spotify:(playlist|album|track|artist|show|episode):([A-Za-z0-9]+)$/);return m?{uri:'spotify:'+m[1]+':'+m[2],web:'https://open.spotify.com/'+m[1]+'/'+m[2]}:null;}
+function tdAnhalten(){const t=tdSet();return t.anhalten&&!!spotify(t.link);}
+/* Eigene Wiedergabe von Versen der Spandakarika, keine Übersetzung. */
+const SPANDA=['Das Erzittern, in dem alles entsteht und vergeht, hat keine Form. Darum hat es keine Grenze.','Freude und Schmerz, ich und Welt: alles erscheint im selben Raum des Gewahrseins.','Auch die Sinne wohnen in dieser Freiheit und strömen aus ihr.','Wer sich dem Erzittern zuwendet, findet seine Natur mitten im Tun.','Gerade in starken Zuständen ist es zu finden: Wut, große Freude, schweifende Gedanken.','Wird die Leere zum Gegenstand, wo ist dann das, was sie bemerkt?'];
+function spandaHeute(){const T=today();const n=Math.floor(Date.UTC(+T.slice(0,4),+T.slice(5,7)-1,+T.slice(8,10))/864e5);return SPANDA[n%SPANDA.length];}
+function tdSeg(){const t=tdSet(),sp=spotify(t.link);
+  return '<blockquote class="quote" style="font-size:15px">'+esc(spandaHeute())+'</blockquote>'+
+  '<p class="lab">Form</p>'+segHtml([{v:'kurz',t:'Kurz · 9 Min.'},{v:'ganz',t:'Ganz · 26 Min.'}],v=>t.form===v,v=>'data-a="tdSet" data-k="form" data-v="'+v+'"',2)+
+  '<p class="lab">Musik</p>'+(sp?'<button type="button" class="btn sec small" data-a="tdSpotify">In Spotify öffnen</button><p class="xs muted">Dort Play tippen und zurückkommen. Solange Spotify vorne ist, wartet die Übung.'+(t.anhalten?' Zur Stille hält die App Spotify an.':'')+'</p>':'<p class="xs muted">Kein Playlist-Link. In den Optionen unter „Tandava“ eintragen, oder ohne Musik üben.</p>');}
+function tdOptionenHtml(){const t=tdSet(),sp=spotify(t.link);
+  return '<section class="card"><h2 class="lab">Tandava</h2><label class="small muted" for="e-tdlink">Spotify-Playlist (Link aus „Teilen → Link kopieren“)</label><input type="url" id="e-tdlink" value="'+esc(t.link)+'" data-ch="tdLink" placeholder="https://open.spotify.com/playlist/…" autocomplete="off">'+
+  (t.link&&!sp?'<p class="xs" style="color:var(--pink)">Das ist kein Spotify-Link.</p>':'')+
+  '<label class="tog"><input type="checkbox" '+(t.anhalten?'checked':'')+' data-a="tdAnhaltenToggle"> Spotify zur Stille anhalten</label>'+
+  (sp?'<button type="button" class="btn sec small" data-a="tdSpotify">Testen: in Spotify öffnen</button>':'')+'</section>';}
 V.start=()=>'<div class="scr"><p class="logo" role="img" aria-label="Punkt">.</p>'+(NATIVE?'':'<span class="eyebrow">Testversion</span>')+'<h1 class="h1">Willkommen.</h1><p class="lead">'+(NATIVE?'Morgen-Gate, Praxis, Journal, Tagesskala, Wochencheck. Die App meldet sich zu deinen Zeiten. Sonst ist sie still.':'Diese Version führt dich durch den ganzen Weg: Morgen-Gate, Praxis, Journal, Tagesskala, Wochencheck und KI-Auswertung. Uhrzeit, Sensoren und Schwerpunkte steuerst du im Testpanel.')+'</p>'+
   '<div class="card"><strong>Die Probephase dauert zwei Wochen.</strong><p class="soft">Jeden Tag der Morgenanker ab '+S.settings.morgen+' Uhr. Dazu mindestens fünfmal 15 Minuten Hauptpraxis in wechselnden Zeitfenstern. So findest du dein Stammfenster.</p></div>'+
   '<div class="card"><strong>Was gespeichert wird</strong><p class="soft small">'+(NATIVE?'Alles bleibt auf diesem Handy: Journal, Aufnahmen, Einstellungen. Exportieren kannst du in den Optionen.':'Deine Testdaten bleiben in diesem Artefakt und sind nur für dich sichtbar. Sprachaufnahmen werden nur simuliert, weil der Browser hier kein Mikrofon freigibt.')+'</p></div>'+
@@ -736,10 +761,10 @@ V.session=()=>{const s=SESCTX;const z=ENGINE.state();if(!s||!z.schritt)return V.
   const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const dauerTxt=y=>y.treiber==='halten'?'bis 3 Min.':y.treiber==='frei'?'frei':y.sekFix?y.sek+' Sek.':y.min+' Min.';
   return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="sesAbbruch">Abbrechen</button><span class="small muted">'+esc(titel)+' · '+esc(PHASEN[S.phase].kurz)+'</span></div>'+
   (s.typ==='breathwork'&&plan.length>5?bwFortschritt(plan,z.i,x):'<ol class="steps" aria-label="Ablauf">'+plan.map((y,k)=>'<li class="step '+(k<z.i?'done':k===z.i?'cur':'')+'" '+(k===z.i?'aria-current="step"':'')+'><span class="sd"></span><span class="grow">'+esc(y.titel)+'</span><span class="muted" style="font-weight:400">'+dauerTxt(y)+'</span></li>').join('')+'</ol>')+
-  (z.phase==='warm'?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(z.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+warmHinweis(x)+'</p>'+(s.typ==='breathwork'&&z.i===0?bwSeg():(x.pacer?begleitSeg():''))+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(z.warmRest)+'</span><span class="ring-sub">Sekunden</span>',z.warmAnteil,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
+  (z.phase==='warm'?'<section class="card grow" aria-live="polite"><span class="eyebrow">'+(z.i===0?'Ankommen':'Kurz umstellen')+' · gleich</span><h1 class="h2">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p><p class="small" style="color:var(--accent)">'+warmHinweis(x)+'</p>'+(s.typ==='breathwork'&&z.i===0?bwSeg():s.typ==='tandava'&&z.i===0?tdSeg():(x.pacer?begleitSeg():''))+ringHtml('<span class="ring-time warm" id="s-zeit">'+Math.ceil(z.warmRest)+'</span><span class="ring-sub">Sekunden</span>',z.warmAnteil,true)+'<button type="button" class="link quiet" data-a="warmSkip" style="align-self:center">Überspringen</button></section><button type="button" class="btn" disabled>'+(letzter?'Abschließen':'Weiter')+'</button></div>':
   '<section class="card grow"><div class="row between" style="align-items:baseline"><h1 class="h2">'+esc(x.titel)+'</h1>'+(x.pacer?'<span class="timer" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(z.rest)+'</span>':'')+'</div><p class="soft">'+esc(x.text)+'</p>'+(x.halten?haltenHtml(z):x.pacer?pacerHtml(z.anteil):ringHtml('<span class="ring-time" id="s-zeit" role="timer" aria-label="verbleibend">'+mmss(z.rest!=null?z.rest:z.zeit)+'</span><span class="ring-sub">'+(z.soll!=null?'von '+dauerTxt(x):'offen')+'</span>',z.anteil))+(S.settings.demo&&!x.sekFix?'<p class="xs muted" style="text-align:center">Demo-Tempo: 1 Minute dauert hier 5 Sekunden.</p>':'')+'<p class="status" id="s-status">'+sesStatus(x,z)+'</p>'+
   (x.leere&&!z.fertig?'<button type="button" class="btn sec small" data-a="leereGenug">Genug für heute. Zählt als geschafft.</button>':'')+'</section>'+
-  '<button type="button" class="btn" data-a="sesWeiter" '+(z.fertig||x.treiber==='frei'||(s.typ==='breathwork'&&!x.halten)?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
+  '<button type="button" class="btn" data-a="sesWeiter" '+(z.fertig||x.treiber==='frei'||(s.typ==='breathwork'&&!x.halten)||s.typ==='tandava'?'':'disabled')+'>'+(letzter?'Abschließen':'Weiter')+'</button></div>');};
 
 V.journal=()=>{const f=fragen();const d=day();if(d.journal&&!ui.f._init){ui.f.a=d.journal.a;ui.f.b=d.journal.b;ui.f.aud_a=d.journal.aud_a;ui.f.aud_b=d.journal.aud_b;ui.f.audn_a=d.journal.audn_a;ui.f.audn_b=d.journal.audn_b;}ui.f._init=1;
   return '<div class="scr"><div class="row between small muted"><span>Morgen-Journal</span><span>'+fmtDay(today())+'</span></div><h1 class="h1s">Was hast du gefunden?</h1>'+(()=>{const lb=erdend()?null:letzterBesuch();return lb?'<section class="card"><span class="eyebrow">Beim letzten Mal in '+esc(PHASEN[S.phase].name)+'</span><span class="xs muted">'+fmtShort(lb.tag)+'</span><blockquote class="quote" style="font-size:15px">„'+esc(lb.text)+'“</blockquote><p class="xs muted">Dieselbe Frage, ein anderer Tag. Was ist heute anders?</p></section>':'';})()+feld('a',f[0],20)+feld('b',f[1],20)+'<div class="grow"></div><button type="button" class="btn" data-a="journalOk" data-ready="a,b">Weiter zur Tagesskala</button><p class="xs muted" data-why="a,b" aria-live="polite" style="text-align:center"></p></div>';};
@@ -845,7 +870,7 @@ function alleUebungenHtml(empf){const a=ampelAm().stufe;const ids=new Set(empf.m
   return '<details class="alle" '+(ui.alleOffen?'open':'')+'><summary class="lab" data-a="alleToggle">Alle Übungen</summary><div class="list">'+rest.map(k=>{const gesperrt=a!=='gruen'&&!['kohaerenz','erdung','klang'].includes(k.id);const ab=k.phasen.includes(S.phase)?'':'ab '+PHASEN[k.phasen[0]].kurz+' · ';return '<div class="li"><span>'+esc(k.id==='haupt'?hauptTitel():k.titel)+' <span class="xs muted">'+ab+k.min+' Min.</span></span>'+(gesperrt?'<span class="xs muted">Ampel</span>':'<button type="button" class="btn sec small" style="width:auto;min-height:36px" data-a="empfStart" data-v="'+k.id+'">Starten</button>')+'</div>';}).join('')+'</div></details>';}
 
 V.nach=()=>{const n=ui.nach;if(!n)return V.heute();const probe=S.phase==='probe'&&n.typ==='haupt';
-  const fr={haupt:'Zwei Sätze: Was hast du gefunden?',breathwork:'Was blieb, als der Zustand ging?',harding:'Was fandst du dort, wo andere dein Gesicht sehen?',metta:'Wer wünschte hier wem?',wuenschen:'Wer wollte das? Und was blieb ohne es?'}[n.typ]||'Eine Zeile, wenn du magst.';
+  const fr={haupt:'Zwei Sätze: Was hast du gefunden?',breathwork:'Was blieb, als der Zustand ging?',harding:'Was fandst du dort, wo andere dein Gesicht sehen?',metta:'Wer wünschte hier wem?',wuenschen:'Wer wollte das? Und was blieb ohne es?',tandava:'Was bewegte sich, als du nichts tatest?'}[n.typ]||'Eine Zeile, wenn du magst.';
   if(!ui.f._init){ui.f.ort=n.ort;ui.f._init=1;}
   return '<div class="scr"><div class="row between small muted"><span>'+esc(uebName(n.typ))+'</span><span>'+n.min+' Min. · '+n.at+'</span></div><h1 class="h1s">Gut.</h1>'+(n.halten&&n.halten.length?'<p class="small muted" style="margin:0">Halten: '+n.halten.map(x=>mmss(x)).join(' · ')+'</p>':'')+feld('nt',fr,n.typ==='breathwork'?20:0)+
   (probe?'<div class="card"><strong>Probephase: eine Zeile zum Fenster</strong><p class="lab">Ort</p>'+seg('ort',ORTE,ORTE.map(o=>ORT_NAME[o]),2)+'<p class="lab">Gestört?</p>'+seg('gestoert',[false,true],['Nein','Ja'],2)+'<p class="lab">Qualität</p>'+seg('qual',[0,1,2,3,4],null,5)+'<div class="row between xs muted"><span>zäh</span><span>klar</span></div></div>':'')+
@@ -922,6 +947,7 @@ V.einst=()=>{const s=S.settings;const bi=S.begegnung.impuls;
   '<section class="card"><h2 class="lab">Darstellung</h2><div class="themes" role="group" aria-label="Farbschema">'+[['system','System'],['hell','Hell'],['dunkel','Dunkel']].map(x=>'<button type="button" class="segb '+(s.theme===x[0]?'on':'')+'" aria-pressed="'+(s.theme===x[0])+'" data-a="theme" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div><p class="xs muted">Die Übungsbildschirme bleiben immer dunkel, damit es früh am Morgen ruhig bleibt.</p></section>'+
   '<section class="card"><h2 class="lab">Begegnung</h2><p class="small">Kreis: '+esc(kreisNamen())+(S.begegnung.stufeAb?', zuletzt erweitert am '+fmtShort(S.begegnung.stufeAb):'')+'</p><label class="small muted" for="e-bimp">Stiller Impuls pro Tag</label><select id="e-bimp" data-ch="eBImp">'+[0,2,4,6].map(n=>'<option value="'+n+'" '+(bi.n===n?'selected':'')+'>'+(n?n+'×':'aus')+'</option>').join('')+'</select><div class="row" style="gap:10px"><label class="small muted" for="e-bvon">von</label><select id="e-bvon" data-ch="eBVon">'+[6,7,8,9,10,11,12].map(h=>'<option value="'+h+'" '+(bi.von===h?'selected':'')+'>'+h+' Uhr</option>').join('')+'</select><label class="small muted" for="e-bbis">bis</label><select id="e-bbis" data-ch="eBBis">'+[14,15,16,17,18,19,20].map(h=>'<option value="'+h+'" '+(bi.bis===h?'selected':'')+'>'+h+' Uhr</option>').join('')+'</select></div><p class="xs muted">Weniger Impulse ist eine Lockerung und braucht einen Satz Begründung.</p>'+(bStufe()>1?'<button type="button" class="btn sec small" data-a="bStufeZurueck">Kreis verkleinern</button>':'')+'</section>'+
   '<section class="card"><h2 class="lab">Atembegleitung</h2><div class="seg" role="group" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['stumm','Stumm'],['ton','Ton'],['stimme','Stimme']].map(x=>'<button type="button" class="segb '+(s.begleitung===x[0]?'on':'')+'" aria-pressed="'+(s.begleitung===x[0])+'" data-a="begleitung" data-v="'+x[0]+'">'+x[1]+'</button>').join('')+'</div></section>'+
+  tdOptionenHtml()+
   '<section class="card"><h2 class="lab">Hauptpraxis</h2><label class="tog"><input type="checkbox" '+(s.hauptKurz?'checked':'')+' data-a="eKurz"> Kürzere Hauptpraxis (Erkundung 7–8 statt 10–12 Min.)</label></section>'+
   '<section class="card"><h2 class="lab">Namen für Platzhalter</h2><label class="xs muted" for="e-namen">Kommagetrennt. Vor der KI-Auswertung werden sie durch [Person 1], [Person 2] ersetzt.</label><input type="text" id="e-namen" value="'+esc(s.namen)+'" data-ch="eNamen" placeholder="zum Beispiel Lena, Jonas"></section>'+
   '<section class="card"><h2 class="lab">Schwerpunkt</h2><p class="small">'+esc(PHASEN[S.phase].name)+', seit '+(S.phaseStart?fmtShort(S.phaseStart):'–')+'</p>'+(S.phase!=='probe'?'<button type="button" class="btn sec small" data-a="phaseZurueck">Zum vorigen Schwerpunkt</button>':'')+'</section>'+
@@ -1185,7 +1211,7 @@ const A={
   beginnen:()=>{const T=today();S.created=T;S.phase='probe';S.phaseStart=T;save();go('auto');},
   ankerStart:()=>startSession('anker','gate'),
   telefon:()=>{if(NATIVE&&nat('telefon'))return;toast('Telefon, Uhr und Notruf sind immer frei.');},
-  sesWeiter:()=>{const z=ENGINE.state();const x=z.schritt;if(!x)return;if(x.halten||z.fertig||x.treiber==='frei'){ENGINE.tap();return;}if(istBw())ENGINE.skip();},
+  sesWeiter:()=>{const z=ENGINE.state();const x=z.schritt;if(!x)return;if(x.halten||z.fertig||x.treiber==='frei'){ENGINE.tap();return;}if(istBw()||istTd())ENGINE.skip();},
   warmSkip:()=>{ENGINE.warmSkip();},
   gateEinst:()=>{nat('gateEinstellungen');},
   offenWeiter:()=>{const g=ui.sesOffen;if(!g)return;ui.sesOffen=null;SESCTX=g.s;go('session');ENGINE.restore(g.eng,{gates:sesGates()});},
@@ -1230,6 +1256,9 @@ const A={
   bwSet:el=>{const b=bwSet();const k=el.dataset.k;b[k]=['atmen','runden','atemzuege'].includes(k)?Number(el.dataset.v):el.dataset.v;if(istBw()&&ENGINE.state().i===0)ENGINE.format(planZuFormat('breathwork',uebungPlan('breathwork')));save();render();},
   haltenEnde:()=>{ENGINE.tap();},
   bwMusik:()=>{nat('musikWaehlen');},
+  tdSet:el=>{const t=tdSet();t[el.dataset.k]=el.dataset.v;if(istTd()&&ENGINE.state().i===0)ENGINE.format(planZuFormat('tandava',uebungPlan('tandava')));save();render();},
+  tdAnhaltenToggle:()=>{const t=tdSet();t.anhalten=!t.anhalten;save();render();},
+  tdSpotify:()=>{const sp=spotify(tdSet().link);if(!sp)return;plog('Spotify öffnen: '+sp.uri);if(NATIVE){if(nat('oeffne',sp.uri,sp.web)!==true)location.href=sp.uri;}else window.open(sp.web,'_blank','noopener');},
   alleToggle:()=>{const d=document.querySelector('details.alle');if(d){d.open=!d.open;ui.alleOffen=d.open;}},
   zeitSet:el=>{const k=el.dataset.k;ui.zeit[k]=k==='t'?Number(el.dataset.v):el.dataset.v;render();},
   nachOk:()=>{stopRec();const n=ui.nach;const L=day(n.tag||today()).haupt;let e=n.id?L.find(x=>x.id===n.id):null;if(!e){e={id:uid(),typ:n.typ,min:n.min,at:n.at,empfohlen:!!n.empfohlen};L.push(e);}e.ort=ui.f.ort||n.ort||null;e.text=(ui.f.nt||'').trim();if(S.phase==='probe'&&n.typ==='haupt'){e.gestoert=ui.f.gestoert;e.qualitaet=ui.f.qual;}ui.nach=null;save();go('heute');toast('Gespeichert.');},
@@ -1302,6 +1331,7 @@ const CH={
   eZeit:el=>{if(el.value){S.settings.stamm.zeit=el.value;save();}},
   eImpulse:el=>{const v=Number(el.value);if(v<S.settings.impulse){ui.lockern=()=>{S.settings.impulse=v;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{S.settings.impulse=v;save();render();}},
   eNamen:el=>{S.settings.namen=el.value;save();},
+  tdLink:el=>{tdSet().link=el.value.trim();save();render();},
   eBImp:el=>{const v=Number(el.value);const bi=S.begegnung.impuls;if(v<bi.n){ui.lockern=()=>{S.begegnung.impuls.n=v;};ui.modal={typ:'begr',anlass:'gelockert',then:'lockern'};ui.f={};render();}else{bi.n=v;save();render();}},
   eBVon:el=>{S.begegnung.impuls.von=Number(el.value);save();},
   eBBis:el=>{S.begegnung.impuls.bis=Number(el.value);save();},

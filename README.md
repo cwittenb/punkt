@@ -12,6 +12,7 @@ Die Oberfläche ist eine Web-App (`app/src/main/assets/web/index.html`). Die And
 | Diktat ins Journal | `Diktat`: Spracherkennung von Android, nur auf dem Gerät (`createOnDeviceSpeechRecognizer`). Der Text landet live im Feld, es entsteht keine Audiodatei |
 | Sprachnotizen (Rückfall) | `Recorder`, wenn keine Erkennung auf dem Gerät da ist oder das deutsche Sprachpaket fehlt. Dateien bleiben im privaten App-Ordner |
 | Sprachbegleitung | Android-Sprachausgabe (Deutsch) |
+| Spotify fürs Tandava | `oeffne()` reicht den Playlist-Link an die Spotify-App weiter; `fremdeMusikAnhalten()` holt kurz den Audiofokus, Spotify pausiert zur Stille. Keine Internet-Berechtigung nötig |
 | NFC-Aufkleber | Adresse `punkt://anker` startet den Morgenanker |
 | Export | Downloads/Punkt |
 

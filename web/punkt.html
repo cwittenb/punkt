@@ -196,6 +196,12 @@ textarea::placeholder,input::placeholder{color:var(--muted)}
 .btn:active:not(:disabled){transform:translateY(1px);box-shadow:var(--hard-press)}
 .btn:disabled{box-shadow:none}
 .btn.sec{background:var(--bg);color:var(--ink);border:1px solid color-mix(in srgb,var(--ink) 55%,transparent)}
+/* Hauptaktion bleibt im Blick: der letzte Knopf eines Screens klebt am unteren Rand, wenn der Inhalt länger ist als der Schirm */
+.scr>.btn:last-child,.scr>.btnrow:last-child{position:sticky;bottom:0;z-index:4}
+.scr>.btn:last-child{box-shadow:var(--hard),0 0 0 22px var(--bg)}
+.scr>.btn:last-child:disabled{box-shadow:0 0 0 22px var(--bg)}
+.scr>.btnrow:last-child{background:var(--bg);box-shadow:0 0 0 22px var(--bg)}
+@media (max-height:760px){.ring-wrap{width:190px;height:190px}.ring-time{font-size:34px}.pacer-wrap{height:140px}.pacer{width:130px;height:130px;border-radius:65px}.scr{padding-top:22px}}
 .btn.sec:hover{background:var(--chip)}
 .segb,.chip,.hint,.pre,.mx .c,.sheet,.toast,.pb,.panel .card,.panel-toggle,.recpill,.audio,.audio .play,.icon,.mic,.bar,.bar>span,.ibtn span,textarea,input[type=text],input[type=time],select{border-radius:0}
 .segb.on,.segb.warnon{box-shadow:var(--hard)}
@@ -599,7 +605,7 @@ const ENGINE=createEngine({
     gong:()=>{if(istTd()&&!document.hidden)nat('summen');gong();},klick:()=>{if(istTd())nat('summen');ton(528,528,.9,.08);},warmEnde:()=>ton(330,330,1.0,.12)},
   musik:{start:()=>nat('musikStart',0.5),stop:ms=>{if(istTd()){if(tdAnhalten())nat('fremdeMusikAnhalten');return;}nat('musikStopp',ms);}},
   wach:an=>an?wach():schlaf(),
-  speicher:{schreiben:snap=>{try{if(!snap||!SESCTX||SESCTX.typ==='schwelle')localStorage.removeItem(SES_KEY);else localStorage.setItem(SES_KEY,JSON.stringify({s:SESCTX,eng:snap,at:Date.now()}));}catch(e){}}},
+  speicher:{schreiben:snap=>{try{if(!snap||!SESCTX||SESCTX.typ==='schwelle'||SESCTX.typ==='zwischen')localStorage.removeItem(SES_KEY);else localStorage.setItem(SES_KEY,JSON.stringify({s:SESCTX,eng:snap,at:Date.now()}));}catch(e){}}},
   render:(z,grund)=>{if(grund==='ende'){if(z.ergebnis&&z.ergebnis.regulaer)sesFertig(z.ergebnis);return;}if(ui.route!=='session')return;if(grund==='phase'&&!z.fertig&&z.phase!=='warm'){sesPatch(z,true);return;}render();},
   patch:z=>sesPatch(z,false),
   log:plog
@@ -607,12 +613,16 @@ const ENGINE=createEngine({
 function offenKarte(){const g=ui.sesOffen;if(!g)return '';const s=g.s,e=g.eng,plan=e.format.schritte,x=plan[e.i]||plan[0];const titel=s.titel?s.titel:s.typ==='anker'?'Morgenanker':uebName(s.typ);const m=Math.round((e.minuten||0)+(x.min!=null&&x.sek?Math.min(x.min,x.min*(e.acc||0)/x.sek):(e.acc||0)/60));
   return '<section class="card hl"><span class="chip pink" style="align-self:flex-start">Unterbrochen um '+hm(new Date(g.at))+'</span><h2 class="h2">'+esc(titel)+'</h2><p class="soft small">Schritt '+(e.i+1)+' von '+plan.length+': '+esc(x.titel)+(m>0?' · '+m+' Min. geübt':'')+'</p><div class="btnrow"><button type="button" class="btn" data-a="offenWeiter">Fortsetzen</button>'+(m>0?'<button type="button" class="btn sec" data-a="offenEnde">Hier beenden</button>':'')+'</div><button type="button" class="link quiet" data-a="offenWeg" style="align-self:flex-start">Verwerfen</button></section>';}
 function sesMerken(){ENGINE.speichern();}
-function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;const plan=typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SESCTX=Object.assign({typ:typ,ctx:ctx},extra||{});go('session');ENGINE.start(planZuFormat(typ,plan),{gates:sesGates()});}
+function startSession(typ,ctx,extra){ensureAudio();ui.sesOffen=null;const plan=extra&&extra.plan?extra.plan:typ==='anker'?ankerPlan():typ==='schwelle'?schwellePlan():uebungPlan(typ);SESCTX=Object.assign({typ:typ,ctx:ctx},extra||{});delete SESCTX.plan;go('session');ENGINE.start(planZuFormat(typ,plan),{gates:sesGates()});}
 function sesFertig(erg){const s=SESCTX;if(!s)return;SESCTX=null;const at=hm(now());
+  if(s.typ==='zwischen'){zwischenZurueck(s,true);return;}
   if(s.typ==='schwelle'){day().schwellen.push({id:s.schwelleId||null,name:s.titel||'',at:at});save();go('begegnung');toast('Geh hinein. 10 % bleiben bei den Füßen.');return;}
   const min=erg.minuten;
   if(s.typ==='anker'){day().anker={min:min,variante:ampelAm().stufe,at:at};save();go('journal');return;}
   const z=ui.zeit||{};const e={id:uid(),typ:s.typ,min:min,at:at,ort:s.ctx==='zeit'?(z.ort||null):(s.ctx==='stamm'?'arbeit':null),text:'',empfohlen:s.ctx==='zeit'&&z.top===s.typ};if(erg.halten&&erg.halten.length)e.halten=erg.halten;day().haupt.push(e);ui.nach=Object.assign({tag:today()},e);save();go('nach');}
+/** Atemübung innerhalb einer Schrittfolge (Schattenarbeit, Angst-Protokoll): Engine-Lauf mit einem Schritt, danach zurück zu Schritt `nach` der Folge. Zählt nicht als eigene Übung. */
+function zwischenAtmen(folge,min,nach){startSession('zwischen',folge,{titel:UEB_NAME[folge]||folge,folge:folge,nach:nach,plan:[st('kohaerenz',min)]});}
+function zwischenZurueck(s,fertig){const u=ui[s.folge];if(u&&fertig)u.i=Math.max(u.i,s.nach);go(s.folge,true);}
 function sesStatus(x,z){if(x.halten&&!z.fertig)return 'Leer halten. Tippe irgendwo, wenn der Atemreiz kommt.';if(z.fertig)return '<span class="dot gruen"></span>Gong. Weiter, wenn du bereit bist.';
   if(z.phase==='paused'&&z.pauseGrund==='lage')return '<span class="dot gelb"></span>Pausiert. Leg das Handy mit dem Display nach unten.';
   if(z.phase==='paused'&&z.pauseGrund==='hintergrund')return '<span class="dot gelb"></span>Pausiert.';
@@ -885,7 +895,7 @@ const INFO_ABEND={ea:'Ein konkreter Moment, in dem du ganz „jemand“ warst: e
 V.abend=()=>{const d=day();if(d.abend&&!ui.f._init){ui.f.ea=d.abend.a;ui.f.eb=d.abend.b;}ui.f._init=1;return '<div class="scr"><div class="row between"><button type="button" class="link" data-a="go" data-v="heute">Zurück</button><span class="small muted">Abend-Rückschau</span></div><h1 class="h1s">Wie war der Tag?</h1>'+(!d.begeg.length?'<div class="card"><p class="small">Heute noch keine Begegnung notiert.</p><button type="button" class="btn sec small" data-a="bnotiz">Nachtragen</button></div>':'')+feld('ea','Wo habe ich mich heute identifiziert?',0,{info:INFO_ABEND.ea})+feld('eb','Was blieb unberührt?',0,{info:INFO_ABEND.eb})+'<div class="grow"></div><button type="button" class="btn" data-a="abendOk">Speichern</button></div>';};
 
 const SCHATTEN_PLAN=[
-  {titel:'Ankommen',text:'Zwei Minuten Kohärenzatmung. Dann die Augen schließen, wenn es sich gut anfühlt.',pacer:true},
+  {titel:'Ankommen',text:'Zwei Minuten Kohärenzatmung. Dann die Augen schließen, wenn es sich gut anfühlt.',atmen:2},
   {titel:'Die Gestalt kommen lassen',text:'Lass ein Bild entstehen, ohne es zu machen. Wie sieht die Gestalt aus? Wo steht sie, wie hält sie sich?'},
   {titel:'Sprechen lassen',text:'Frag: Was willst du mir sagen? Lass die Antwort kommen, auch wenn sie unbequem ist. Halte fest, was kommt.',feld:'s3'},
   {titel:'Was brauchst du?',text:'Frag, was die Gestalt braucht. Nichts lösen, nur hören und festhalten.',feld:'s4'},
@@ -895,19 +905,19 @@ V.schatten=()=>{const s=ui.schatten||(ui.schatten={i:0});const x=SCHATTEN_PLAN[s
   const ausH={};S.begegnung.merk.slice(-4).forEach(m=>{ausH[m.ausloeser]=(ausH[m.ausloeser]||0)+m.n;});const topA=Object.keys(ausH).sort((a,b)=>ausH[b]-ausH[a])[0];
   return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="go" data-v="heute">Abbrechen</button><span class="small muted">Schattenarbeit · '+(s.i+1)+' von 5</span></div>'+
   '<div class="row" role="img" aria-label="Schritt '+(s.i+1)+' von 5" style="gap:6px">'+SCHATTEN_PLAN.map((_,k)=>'<span style="width:28px;height:6px;border-radius:3px;background:'+(k===s.i?'var(--pink)':k<s.i?'var(--accent)':'var(--line)')+'"></span>').join('')+'</div>'+
-  '<div class="col"><span class="eyebrow">Diese Woche: '+esc(gestalt())+'</span><h1 class="h1s">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p>'+(s.i===1&&topA?'<p class="small muted">Aus deinen Begegnungen: „'+esc(topA)+'“ zog dich zuletzt '+ausH[topA]+'× heraus. Die Gestalt darf damit zu tun haben.</p>':'')+'</div>'+(x.pacer?pacerHtml():'')+(x.feld?feld(x.feld,'Was kommt',0):'')+
+  '<div class="col"><span class="eyebrow">Diese Woche: '+esc(gestalt())+'</span><h1 class="h1s">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p>'+(s.i===1&&topA?'<p class="small muted">Aus deinen Begegnungen: „'+esc(topA)+'“ zog dich zuletzt '+ausH[topA]+'× heraus. Die Gestalt darf damit zu tun haben.</p>':'')+'</div>'+(x.feld?feld(x.feld,'Was kommt',0):'')+
   '<div class="grow"></div><p class="small muted">Wird es zu viel: Kohärenzatmung, dann aufhören. Das zählt. <button type="button" class="link" data-a="angstStart" style="min-height:0;padding:0">Angst-Protokoll</button></p>'+
-  '<div class="btnrow"><button type="button" class="btn sec" data-a="schattenZurueck" '+(s.i===0?'disabled':'')+'>Zurück</button><button type="button" class="btn" data-a="'+(letzter?'schattenOk':'schattenWeiter')+'">'+(letzter?'Abschließen':'Weiter')+'</button></div></div>';};
+  '<div class="btnrow">'+(x.atmen?'<button type="button" class="btn sec" data-a="schattenWeiter">Ohne Atmung</button><button type="button" class="btn" data-a="schattenAtmen">Starten</button>':'<button type="button" class="btn sec" data-a="schattenZurueck" '+(s.i===0?'disabled':'')+'>Zurück</button><button type="button" class="btn" data-a="'+(letzter?'schattenOk':'schattenWeiter')+'">'+(letzter?'Abschließen':'Weiter')+'</button>')+'</div></div>';};
 
 const ANGST_PLAN=[
-  {titel:'Eine Minute Kohärenzatmung.',text:'Im Konflikt zu Hause danach kurz: Welche Abwehr läuft gerade, Kampf, Flucht, Erstarren oder Unterwerfung? Und wer bemerkt sie?',pacer:true},
+  {titel:'Eine Minute Kohärenzatmung.',text:'Im Konflikt zu Hause danach kurz: Welche Abwehr läuft gerade, Kampf, Flucht, Erstarren oder Unterwerfung? Und wer bemerkt sie?',atmen:1},
   {titel:'Die Geschichte ablegen.',text:'„Das geht schief, weil …“ Den Satz bemerken und liegen lassen.'},
   {titel:'Die Angst als Empfindung spüren.',text:'Wo sitzt sie? Brust, Bauch, Kiefer? Ganz hineingehen, nicht wegatmen.'},
   {titel:'Wird das, in dem die Angst erscheint, selbst ängstlich?',text:'Nicht antworten. Hinschauen.'},
   {titel:'Aus dem handeln, was jetzt klar ist.',text:'Nicht aus der Angst und nicht gegen sie.'}];
 V.angst=()=>{const s=ui.angst||(ui.angst={i:0});const x=ANGST_PLAN[s.i];const letzter=s.i===ANGST_PLAN.length-1;
-  return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="go" data-v="heute">Schließen</button><span class="small muted">Angst-Protokoll · '+(s.i+1)+' von 5</span></div><div class="grow col" style="justify-content:center;gap:14px"><h1 class="h1s" style="font-size:33px">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p>'+(x.pacer?pacerHtml():'')+(letzter?feld('ag','Eine Zeile, wenn du magst',0,{mic:false,ph:'Was war da?'}):'')+'</div>'+
-  (letzter?'<button type="button" class="btn" data-a="angstOk">Fertig</button>':'<button type="button" class="btn" data-a="angstWeiter">Weiter</button>')+'</div>';};
+  return '<div class="scr night"><div class="row between"><button type="button" class="link quiet" data-a="go" data-v="heute">Schließen</button><span class="small muted">Angst-Protokoll · '+(s.i+1)+' von 5</span></div><div class="grow col" style="justify-content:center;gap:14px"><h1 class="h1s" style="font-size:33px">'+esc(x.titel)+'</h1><p class="soft" style="font-size:17px">'+esc(x.text)+'</p>'+(letzter?feld('ag','Eine Zeile, wenn du magst',0,{mic:false,ph:'Was war da?'}):'')+'</div>'+
+  (letzter?'<button type="button" class="btn" data-a="angstOk">Fertig</button>':x.atmen?'<div class="btnrow"><button type="button" class="btn sec" data-a="angstWeiter">Ohne Atmung</button><button type="button" class="btn" data-a="angstAtmen">Starten</button></div>':'<button type="button" class="btn" data-a="angstWeiter">Weiter</button>')+'</div>';};
 
 V.tagebuch=()=>{const keys=Object.keys(S.days).sort().reverse();
   const tag=k=>{const d=S.days[k];const offen=!!ui.offen[k];const badges=[];if(d.anker)badges.push('<span class="chip purple">Anker</span>');if(d.notausgang)badges.push('<span class="chip warn">Notausgang</span>');if(d.haupt.length)badges.push('<span class="chip">'+d.haupt.length+' Übung'+(d.haupt.length>1?'en':'')+'</span>');if(d.begeg&&d.begeg.length)badges.push('<span class="chip">'+d.begeg.length+' Begegnung'+(d.begeg.length>1?'en':'')+'</span>');if(d.begr.length)badges.push('<span class="chip pink">'+d.begr.length+' Begr.</span>');
@@ -1225,7 +1235,7 @@ const A={
   testmodus:()=>{S.settings.testmodus=!S.settings.testmodus;if(!S.settings.testmodus)S.sim.offset=0;save();render();},
   theme:el=>{S.settings.theme=el.dataset.v;save();render();},
   leereGenug:()=>{ENGINE.skip();},
-  sesAbbruch:()=>{const typ=SESCTX&&SESCTX.typ;ENGINE.abbruch();SESCTX=null;plog('Übung abgebrochen: '+typ);go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
+  sesAbbruch:()=>{const s=SESCTX,typ=s&&s.typ;ENGINE.abbruch();SESCTX=null;plog('Übung abgebrochen: '+typ);if(typ==='zwischen'){zwischenZurueck(s,false);return;}go(typ==='anker'?'gate':typ==='schwelle'?'begegnung':'heute');},
   bnotiz:()=>{ui.bnZurueck=['heute','abend'].includes(ui.route)?ui.route:'begegnung';ui.modal=null;go('bnotiz');},
   bnotizOk:()=>{stopRec();const f=ui.f;const T=today();const d=day();const e={id:uid(),at:hm(now()),kat:f.bKat,gew:f.bGew,rueck:f.bRueck,kon:f.bKon,aus:f.bAus||null,text:(f.bt||'').trim(),aud:f.aud_bt||0,stufe:bStufe()};d.begeg.push(e);
     let msg=e.rueck>0?bRueck(e.rueck)+'× zurückgekehrt. Genau das ist die Übung.':'Notiert. Es jetzt zu bemerken, ist auch eine Rückkehr.';
@@ -1277,10 +1287,12 @@ const A={
   abendOk:()=>{stopRec();day().abend={a:(ui.f.ea||'').trim(),b:(ui.f.eb||'').trim(),aud_a:ui.f.aud_ea||0,aud_b:ui.f.aud_eb||0,audn_a:ui.f.audn_ea||[],audn_b:ui.f.audn_eb||[],at:hm(now())};save();go('heute');toast('Abend-Rückschau gespeichert.');},
   schattenStart:()=>{ensureAudio();ui.schatten={i:0};go('schatten');},
   schattenWeiter:()=>{ui.schatten.i++;rerender();},
+  schattenAtmen:()=>{const s=ui.schatten||(ui.schatten={i:0});zwischenAtmen('schatten',SCHATTEN_PLAN[s.i].atmen,s.i+1);},
   schattenZurueck:()=>{ui.schatten.i=Math.max(0,ui.schatten.i-1);rerender();},
   schattenOk:()=>{const t=[ui.f.s3?'Was die Gestalt sagte: '+ui.f.s3.trim():'',ui.f.s4?'Was sie braucht: '+ui.f.s4.trim():''].filter(Boolean).join(' ');day().haupt.push({typ:'schatten',min:25,at:hm(now()),text:t,gestalt:gestalt()});ui.schatten=null;save();go('heute');toast('Schattenarbeit gespeichert.');},
   angstStart:()=>{ensureAudio();ui.angst={i:0};ui.modal=null;go('angst');},
   angstWeiter:()=>{ui.angst.i++;rerender();},
+  angstAtmen:()=>{const s=ui.angst||(ui.angst={i:0});zwischenAtmen('angst',ANGST_PLAN[s.i].atmen,s.i+1);},
   angstOk:()=>{const t=(ui.f.ag||'').trim();day().haupt.push({typ:'angst',min:3,at:hm(now()),text:t});ui.angst=null;save();go('heute');toast('Angst-Protokoll gespeichert.');},
   info:el=>{const k=el.dataset.v;ui.info[k]=!ui.info[k];rerender();},
   tagAuf:el=>{const k=el.dataset.v;ui.offen[k]=!ui.offen[k];render();},

@@ -35,6 +35,14 @@ class AlarmReceiver : BroadcastReceiver() {
                 Speicher.zaehlen(ctx, "bimp")
                 melden(ctx, "still", Notif.ID_STILL, ".", null, "bimpuls", 30)
             }
+            "check" -> {
+                // Bleibt drei Stunden stehen. Läuft gerade eine Übung, nur als stille Mitteilung ohne Vibration.
+                if (Laufzeit.wach) {
+                    Notif.zeigen(ctx, "check", Notif.ID_CHECK, "Wochencheck", "Die Woche im Rückblick, etwa fünf Minuten.", "check", 180, mitSummen = false)
+                    return
+                }
+                melden(ctx, "check", Notif.ID_CHECK, "Wochencheck", "Die Woche im Rückblick, etwa fünf Minuten.", "check", 180)
+            }
             "stamm" -> {
                 if (Laufzeit.wach) return
                 melden(ctx, "praxis", Notif.ID_STAMM, "Stammfenster", "Hauptpraxis, jetzt.", "stamm", 90)

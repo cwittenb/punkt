@@ -48,6 +48,7 @@ Telefon, Kontakte, Uhr, Notruf, Einstellungen, Startbildschirm, Tastatur und Sma
 - Tagesimpulse: verteilt zwischen 8 Uhr (frühestens drei Stunden nach der Morgenstunde) und 21 Uhr
 - Stille Impulse: im Fenster aus den Begegnungs-Einstellungen
 - Während einer Übung kommen keine Impulse
+- Wochencheck: sonntags um 19 Uhr, solange er an diesem Sonntag noch nicht erledigt ist. Bleibt er aus, steht er ab dem siebten Tag nach dem letzten Check auf „Heute“, bis er gemacht wird
 - Alle Impulse vibrieren als Wecker-Vibration, auch im Lautlos-Modus
 
 ## Bauen

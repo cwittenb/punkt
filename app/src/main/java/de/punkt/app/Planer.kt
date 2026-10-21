@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import org.json.JSONObject
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Random
@@ -18,6 +19,8 @@ object Planer {
 
     // Tagesimpulse verteilen sich über dieses Fenster (Minuten ab Mitternacht).
     private const val IMPULS_ENDE = 21 * 60
+    // Erinnerung an den Wochencheck (Minuten ab Mitternacht)
+    private const val CHECK_MINUTE = 19 * 60
 
     fun termine(p: JSONObject, tag: LocalDate): List<Termin> {
         val zone = ZoneId.systemDefault()
@@ -35,6 +38,12 @@ object Planer {
             if (tage != null) for (i in 0 until tage.length()) if (tage.optInt(i, -1) == wt) drin = true
             val m = minuten(st.optString("zeit"))
             if (drin && m != null) out.add(Termin(um(m), "stamm", ""))
+        }
+
+        // Wochencheck: sonntags um 19 Uhr, solange er an diesem Sonntag noch nicht erledigt ist.
+        // Die Web-App meldet das Datum des letzten Checks; liegt er früher als dieser Sonntag, wird erinnert.
+        if (tag.dayOfWeek == DayOfWeek.SUNDAY && p.optString("check") != tag.toString()) {
+            out.add(Termin(um(CHECK_MINUTE), "check", ""))
         }
 
         // Schwellen mit Uhrzeit, täglich

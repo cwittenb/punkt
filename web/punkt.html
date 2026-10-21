@@ -1016,9 +1016,9 @@ function phasePruefung(T,stufe){const i=phaseInfo();const def=i.def;if(!def.next
   return{minOk:minOk,lang:lang,quote:quote,gruen2:gruen2,stammOk:stammOk,next:def.next,ok:minOk&&quote>=.8&&gruen2&&(S.phase!=='probe'||stammOk)};}
 function stammVorschlag(){const cnt={};Object.keys(S.days).forEach(k=>{S.days[k].haupt.forEach(h=>{if(h.typ!=='haupt'||h.gestoert||(h.qualitaet!=null&&h.qualitaet<2))return;const key=dow(k)+'|'+h.at.slice(0,2);cnt[key]=(cnt[key]||0)+1;});});
   const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).slice(0,2);if(!top.length)return null;return{tage:top.map(x=>Number(x.split('|')[0])),zeit:top[0].split('|')[1]+':00'};}
-function letzterCheck(){const ks=Object.keys(S.checks);let m=null;ks.forEach(k=>{const d=S.checks[k]&&S.checks[k].datum;if(d&&(!m||d>m))m=d;});return m;}
+function letzterCheckTag(){const ks=Object.keys(S.checks);let m=null;ks.forEach(k=>{const d=S.checks[k]&&S.checks[k].datum;if(d&&(!m||d>m))m=d;});return m;}
 /* Fällig: sonntags ab 17 Uhr, solange der Check noch nicht gemacht ist; und an jedem Tag, an dem der letzte Check (oder der Beginn) sieben Tage oder länger zurückliegt. Bleibt stehen, bis der Check erledigt ist. */
-function wcFaellig(T){if(!S.created)return null;T=T||today();const l=letzterCheck();if(l===T)return null;const seit=l?diffDays(l,T):diffDays(S.created,T);
+function wcFaellig(T){if(!S.created)return null;T=T||today();const l=letzterCheckTag();if(l===T)return null;const seit=l?diffDays(l,T):diffDays(S.created,T);
   if(dow(T)===6&&now().getHours()>=17)return{grund:'sonntag',seit:seit};
   if(seit>=7)return{grund:'offen',seit:seit,letzter:l};return null;}
 function wcStart(){const T=today();ui.wc={s:1,T:T,offene:offeneUebungen(T)};ui.f={};go('wc',true);}
@@ -1370,7 +1370,7 @@ document.addEventListener('visibilitychange',()=>ENGINE.gate('sichtbar',!documen
 setInterval(()=>{if(['heute','gate'].includes(ui.route)&&!ui.modal&&!document.activeElement.matches('textarea,input,select')){const r=autoRoute();if(r!==ui.route&&(r==='gate'||ui.route==='gate'))go('auto');}},15000);
 setInterval(()=>{const p=document.getElementById('panel');if(p&&p.classList.contains('open'))renderPanel();},1000);
 let natPlanAlt='';
-function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begegnung,echt=keyOf(new Date()),d=peek(echt);const plan={angelegt:true,morgen:s.morgen,stamm:{aktiv:S.phase!=='probe',tage:s.stamm.tage,zeit:s.stamm.zeit},impulse:s.impulse,frage:ankerFrage(echt)[0],hinweis:ankerFrage(echt)[1],erlaubt:(s.gateFrei||[]).map(x=>typeof x==='string'?x:x.p),bimp:{n:b.impuls.n,von:b.impuls.von,bis:b.impuls.bis},schwellen:b.schwellen.filter(x=>x.typ==='zeit'&&x.zeit).map(x=>({id:x.id,name:x.name,zeit:x.zeit})),fertig:d&&(d.frei||(d.anker&&d.journal&&d.skala))?echt:'',check:letzterCheck()||''};const j=JSON.stringify(plan);if(j!==natPlanAlt){natPlanAlt=j;nat('plan',j);}}
+function nativePlan(){if(!NATIVE||!S.created)return;const s=S.settings,b=S.begegnung,echt=keyOf(new Date()),d=peek(echt);const plan={angelegt:true,morgen:s.morgen,stamm:{aktiv:S.phase!=='probe',tage:s.stamm.tage,zeit:s.stamm.zeit},impulse:s.impulse,frage:ankerFrage(echt)[0],hinweis:ankerFrage(echt)[1],erlaubt:(s.gateFrei||[]).map(x=>typeof x==='string'?x:x.p),bimp:{n:b.impuls.n,von:b.impuls.von,bis:b.impuls.bis},schwellen:b.schwellen.filter(x=>x.typ==='zeit'&&x.zeit).map(x=>({id:x.id,name:x.name,zeit:x.zeit})),fertig:d&&(d.frei||(d.anker&&d.journal&&d.skala))?echt:'',check:letzterCheckTag()||''};const j=JSON.stringify(plan);if(j!==natPlanAlt){natPlanAlt=j;nat('plan',j);}}
 function nativeSync(){if(!NATIVE||!S.created)return;try{const z=JSON.parse(nat('zaehler',today())||'{}');if(z.imp||z.bimp){const d=day();d.impulse.n=Math.max(d.impulse.n||0,z.imp||0);d.bimp.n=Math.max(d.bimp.n||0,z.bimp||0);}if(nat('gateAusGemeldet')===true)S.pending={anlass:'gate_aus'};}catch(e){}save();}
 window.punktNativ={
   lage:b=>{S.sim.faceDown=!!b;ENGINE.gate('lage',!!b);},

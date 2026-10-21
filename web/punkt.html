@@ -283,6 +283,10 @@ details.alle summary{cursor:pointer;list-style:none;display:flex;align-items:cen
 <script src="engine.js"></script>
 <script>
 'use strict';
+/* ---------- Fehleranzeige: Ein Fehler beim Aufbau zeigt seinen Text statt eines leeren Bildschirms ---------- */
+window.addEventListener('error',e=>{try{const app=document.getElementById('app');if(!app||app.firstChild)return;const t=(e.message||'Fehler')+(e.filename?' ('+(e.filename.split('/').pop())+':'+e.lineno+')':'')+(e.error&&e.error.stack?'\n'+String(e.error.stack).slice(0,600):'');
+  app.innerHTML='<div class="scr"><h1 class="h1s">Die App konnte nicht starten.</h1><p class="small">Dieser Fehler stand im Weg:</p><pre class="small" style="white-space:pre-wrap;word-break:break-word;background:var(--card);padding:10px;border-radius:10px">'+t.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+'</pre><p class="xs muted">Die Daten sind nicht verloren. Text kopieren und an Claude geben.</p><button type="button" class="btn" id="fehlerKopie">Fehler kopieren</button></div>';
+  const b=document.getElementById('fehlerKopie');if(b)b.onclick=()=>{try{if(window.PunktNative)window.PunktNative.kopiere(t);else navigator.clipboard.writeText(t);}catch(x){}b.textContent='Kopiert';};}catch(x){}});
 /* ---------- Android-Hülle: Brücke per Feature-Erkennung ---------- */
 const NATIVE=!!window.PunktNative;
 function nat(fn,...a){try{return window.PunktNative[fn](...a);}catch(e){return null;}}

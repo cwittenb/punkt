@@ -21,6 +21,7 @@ object Notif {
     const val ID_IMPULS = 11
     const val ID_STILL = 12
     const val ID_STAMM = 13
+    const val ID_CHECK = 14
     const val ID_SCHWELLE = 100
 
     // Kanal-IDs mit Version: Kanäle lassen sich nach dem Anlegen nicht mehr ändern
@@ -31,6 +32,7 @@ object Notif {
         "impuls" to longArrayOf(0, 220),
         "still" to longArrayOf(0, 90, 140, 90, 140, 320),
         "praxis" to longArrayOf(0, 400, 200, 400),
+        "check" to longArrayOf(0, 300, 150, 300, 150, 300),
         "schwelle" to longArrayOf(0, 120, 120, 120, 120, 120)
     )
 
@@ -54,6 +56,7 @@ object Notif {
         k("still", "Stiller Impuls", "Nur Vibration, für die Begegnung.")
         k("praxis", "Stammfenster", "Erinnerung an die Hauptpraxis.")
         k("schwelle", "Schwellen", "Zeitschwellen der Begegnung.")
+        k("check", "Wochencheck", "Sonntags um 19 Uhr, solange der Check offen ist.")
     }
 
     fun zeigen(
